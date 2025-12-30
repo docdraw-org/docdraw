@@ -1,0 +1,8 @@
+#1: List Wrapping & Continuations
+p: This example stresses wrapping behavior and continuation lines within list items.
+
+-1: This is a very long bullet item intended to wrap across multiple lines without changing indentation or introducing extra vertical spacing.
+..: This is a continuation line that is part of the same list item and must align with the list text start (not the bullet marker).
+..: A second continuation line, still part of the same bullet item.
+-1: A second top-level bullet to verify spacing between items stays consistent.
+-2: A nested bullet that should indent exactly one level and wrap cleanly when the line is long enough to exceed the content width.

@@ -1,0 +1,34 @@
+[
+  { "type": "section", "title": "Getting started" },
+  { "type": "doc", "slug": "overview", "title": "What is DocDraw?" },
+  { "type": "doc", "slug": "how-it-works", "title": "How DocDraw works" },
+  { "type": "doc", "slug": "quickstart", "title": "Quickstart (5 minutes)" },
+  { "type": "doc", "slug": "installation", "title": "Installation" },
+  { "type": "doc", "slug": "why-not", "title": "Why not just use…?" },
+
+  { "type": "section", "title": "Standard" },
+  { "type": "doc", "slug": "docdraw-v1", "title": "DocDraw v1 (Canonical Document Format)" },
+  { "type": "doc", "slug": "dmp-1", "title": "DocDraw Markdown Profile v1 (DMP-1)" },
+  { "type": "doc", "slug": "pdf-rendering-v1", "title": "DocDraw v1 → PDF Rendering Spec (Draft)" },
+
+  { "type": "section", "title": "Validation & Conformance" },
+  { "type": "doc", "slug": "validation-errors", "title": "Validation errors" },
+  { "type": "doc", "slug": "error-codes", "title": "Error codes registry" },
+  { "type": "doc", "slug": "conformance", "title": "Conformance" },
+  { "type": "doc", "slug": "conformance-tests", "title": "Conformance test suite" },
+
+  { "type": "section", "title": "Examples" },
+  { "type": "doc", "slug": "examples", "title": "Golden examples" },
+
+  { "type": "section", "title": "Project" },
+  { "type": "doc", "slug": "reference-implementation", "title": "Reference implementation status" },
+  { "type": "doc", "slug": "ai-output-contract", "title": "AI output contract" },
+  { "type": "doc", "slug": "cli", "title": "CLI (Phase 1 shim)" },
+  { "type": "doc", "slug": "downloads", "title": "Downloads" },
+  { "type": "doc", "slug": "ATTENTION", "title": "DocDraw v1 attention summary" },
+  { "type": "doc", "slug": "compatibility", "title": "Compatibility & Stability" },
+  { "type": "doc", "slug": "roadmap", "title": "Roadmap (no dates)" },
+  { "type": "doc", "slug": "changelog", "title": "Changelog" }
+]
+
+

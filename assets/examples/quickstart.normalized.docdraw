@@ -1,0 +1,12 @@
+#1: Example Document
+p: This is a paragraph.
+
+-1: First bullet
+-2: Nested bullet
+-1: Another top-level bullet
+..: with a continuation line
+
+---
+
+#2: Second section
+p: Done.

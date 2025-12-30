@@ -1,0 +1,6 @@
+#1: Invalid list level jump (should FAIL DocDraw v1 validation)
+
+-1: Top bullet
+-3: Illegal jump bullet (skips level 2)
+
+

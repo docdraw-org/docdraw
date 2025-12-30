@@ -1,0 +1,143 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../scripts/docdraw_cli_lib.php';
+
+function usage(): never
+{
+    $msg = <<<TXT
+docdraw (Phase 1 CLI shim)
+
+Usage:
+  docdraw validate <file.docdraw>
+  docdraw normalize <file.docdraw> [-o <out.docdraw>]
+  docdraw convert --from dmp1 <file.md> [-o <out.docdraw>]
+
+Notes:
+  - This CLI is intentionally minimal until the reference compiler exists.
+TXT;
+    fwrite(STDERR, $msg . "\n");
+    exit(2);
+}
+
+$argv = $_SERVER['argv'] ?? [];
+array_shift($argv);
+if (!$argv) {
+    usage();
+}
+
+$cmd = array_shift($argv);
+
+if ($cmd === 'help' || $cmd === '--help' || $cmd === '-h') {
+    // Print usage to stdout for help.
+    $msg = <<<TXT
+docdraw (Phase 1 CLI shim)
+
+Usage:
+  docdraw validate <file.docdraw>
+  docdraw normalize <file.docdraw> [-o <out.docdraw>]
+  docdraw convert --from dmp1 <file.md> [-o <out.docdraw>]
+
+Notes:
+  - This CLI is intentionally minimal until the reference compiler exists.
+TXT;
+    echo $msg . "\n";
+    exit(0);
+}
+
+if ($cmd === 'validate') {
+    $path = $argv[0] ?? null;
+    if (!is_string($path) || $path === '') usage();
+    $text = @file_get_contents($path);
+    if ($text === false) {
+        fwrite(STDERR, "ERROR: cannot read file: {$path}\n");
+        exit(1);
+    }
+    $res = docdraw_validate_v1($text);
+    if ($res['ok']) {
+        echo "OK\n";
+        exit(0);
+    }
+    $err = $res['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
+    $line = isset($err['line']) ? ('line ' . $err['line'] . ': ') : '';
+    fwrite(STDERR, "FAIL: {$line}{$err['code']}: {$err['message']}\n");
+    exit(3);
+}
+
+if ($cmd === 'normalize') {
+    $path = $argv[0] ?? null;
+    if (!is_string($path) || $path === '') usage();
+    $outPath = null;
+    for ($i = 1; $i < count($argv); $i++) {
+        if ($argv[$i] === '-o' && isset($argv[$i + 1])) {
+            $outPath = $argv[$i + 1];
+        }
+    }
+    $text = @file_get_contents($path);
+    if ($text === false) {
+        fwrite(STDERR, "ERROR: cannot read file: {$path}\n");
+        exit(1);
+    }
+    $norm = docdraw_normalize($text);
+    if ($outPath) {
+        if (@file_put_contents($outPath, $norm) === false) {
+            fwrite(STDERR, "ERROR: cannot write output: {$outPath}\n");
+            exit(1);
+        }
+    } else {
+        echo $norm;
+    }
+    exit(0);
+}
+
+if ($cmd === 'convert') {
+    $from = null;
+    $outPath = null;
+    $file = null;
+
+    for ($i = 0; $i < count($argv); $i++) {
+        if ($argv[$i] === '--from' && isset($argv[$i + 1])) {
+            $from = $argv[$i + 1];
+            $i++;
+            continue;
+        }
+        if ($argv[$i] === '-o' && isset($argv[$i + 1])) {
+            $outPath = $argv[$i + 1];
+            $i++;
+            continue;
+        }
+        if (!str_starts_with($argv[$i], '-')) {
+            $file = $argv[$i];
+        }
+    }
+
+    if ($from !== 'dmp1' || !$file) usage();
+    $md = @file_get_contents($file);
+    if ($md === false) {
+        fwrite(STDERR, "ERROR: cannot read file: {$file}\n");
+        exit(1);
+    }
+    $res = dmp1_convert_to_docdraw($md);
+    if (!$res['ok']) {
+        $err = $res['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
+        $line = isset($err['line']) ? ('line ' . $err['line'] . ': ') : '';
+        fwrite(STDERR, "FAIL: {$line}{$err['code']}: {$err['message']}\n");
+        exit(3);
+    }
+    $docdraw = $res['docdraw'] ?? '';
+    if ($outPath) {
+        if (@file_put_contents($outPath, $docdraw) === false) {
+            fwrite(STDERR, "ERROR: cannot write output: {$outPath}\n");
+            exit(1);
+        }
+    } else {
+        echo $docdraw;
+    }
+    exit(0);
+}
+
+usage();
+
+
