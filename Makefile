@@ -7,6 +7,7 @@ examples:
 
 examples-check:
 	@php scripts/check_examples_docs.php
+	@php scripts/check_pdf_determinism.php
 
 .PHONY: examples-update
 

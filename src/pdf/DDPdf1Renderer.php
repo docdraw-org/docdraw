@@ -6,6 +6,51 @@ namespace DocDraw\Pdf;
 
 use FPDF;
 
+/**
+ * FPDF sets CreationDate to current time inside its internal _enddoc(), which makes output non-deterministic.
+ * This subclass overrides _enddoc() to use a fixed CreationDate.
+ */
+final class DeterministicFPDF extends FPDF
+{
+    // Copy of FPDF::_enddoc() with one change: CreationDate is fixed (0).
+    protected function _enddoc(): void
+    {
+        $this->CreationDate = 0;
+        $this->_putheader();
+        $this->_putpages();
+        $this->_putresources();
+        // Info
+        $this->_newobj();
+        $this->_put('<<');
+        $this->_putinfo();
+        $this->_put('>>');
+        $this->_put('endobj');
+        // Catalog
+        $this->_newobj();
+        $this->_put('<<');
+        $this->_putcatalog();
+        $this->_put('>>');
+        $this->_put('endobj');
+        // Cross-ref
+        $offset = $this->_getoffset();
+        $this->_put('xref');
+        $this->_put('0 '.($this->n + 1));
+        $this->_put('0000000000 65535 f ');
+        for ($i = 1; $i <= $this->n; $i++) {
+            $this->_put(sprintf('%010d 00000 n ', $this->offsets[$i]));
+        }
+        // Trailer
+        $this->_put('trailer');
+        $this->_put('<<');
+        $this->_puttrailer();
+        $this->_put('>>');
+        $this->_put('startxref');
+        $this->_put($offset);
+        $this->_put('%%EOF');
+        $this->state = 3;
+    }
+}
+
 final class DDPdf1Renderer
 {
     // Page + typography defaults (DD-PDF-1 draft)
@@ -19,7 +64,7 @@ final class DDPdf1Renderer
 
     public function render(string $docdrawText, string $outPath): void
     {
-        $pdf = new FPDF('P', 'pt', 'Letter');
+        $pdf = new DeterministicFPDF('P', 'pt', 'Letter');
         $pdf->SetAutoPageBreak(true, self::MARGIN_PT);
         $pdf->SetMargins(self::MARGIN_PT, self::MARGIN_PT, self::MARGIN_PT);
         $pdf->AddPage();
