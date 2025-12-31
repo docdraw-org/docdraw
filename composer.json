@@ -1,0 +1,12 @@
+{
+  "name": "docdraw-org/docdraw",
+  "description": "DocDraw standard + local toolchain (CLI + conformance harness)",
+  "type": "project",
+  "license": "Apache-2.0",
+  "require": {
+    "php": ">=8.2",
+    "setasign/fpdf": "^1.8"
+  }
+}
+
+

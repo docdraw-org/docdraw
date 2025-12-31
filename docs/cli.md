@@ -23,6 +23,14 @@ See: [Installation](installation.md)
 ./bin/docdraw convert --from dmp1 file.md -o out.docdraw
 ```
 
+### Render PDF (DD-PDF-1) (prototype)
+This command requires Composer dependencies:
+
+```text
+composer install
+./bin/docdraw render file.docdraw -o out.pdf
+```
+
 Notes:
 - The converter is intentionally minimal and will evolve; it enforces key DMP-1 rules like “4 spaces per nesting level” and “no tabs.”
 - If conversion fails, it prints an error code and line number.

@@ -126,6 +126,11 @@ foreach ($manifest['examples'] as $i => $ex) {
                     fwrite(STDERR, "ERROR: example {$id} (pass) must declare output.normalized_sha256 (TBD allowed)\n");
                     $errors++;
                 }
+                $pdfSha = $output['pdf_sha256'] ?? null;
+                if (!is_string($pdfSha) || $pdfSha === '' || $pdfSha === 'TBD') {
+                    fwrite(STDERR, "ERROR: example {$id} (pass) must have output.pdf_sha256 populated (run: make examples-update)\n");
+                    $errors++;
+                }
                 if (!isset($source['docdraw'])) {
                     fwrite(STDERR, "ERROR: example {$id} (pass) must include source.docdraw\n");
                     $errors++;
@@ -139,6 +144,25 @@ foreach ($manifest['examples'] as $i => $ex) {
                 } elseif (!str_starts_with($pdfPath, 'assets/examples/')) {
                     fwrite(STDERR, "ERROR: example {$id} output.pdf_path must be under assets/examples/: {$pdfPath}\n");
                     $errors++;
+                } elseif ($expectedType === 'pass') {
+                    $absPdf = $root . '/' . ltrim($pdfPath, '/');
+                    if (!is_file($absPdf)) {
+                        fwrite(STDERR, "ERROR: example {$id} expected PDF missing: {$pdfPath}\n");
+                        $errors++;
+                    } else {
+                        $bytes = file_get_contents($absPdf);
+                        if ($bytes === false) {
+                            fwrite(STDERR, "ERROR: example {$id} cannot read PDF: {$pdfPath}\n");
+                            $errors++;
+                        } else {
+                            $sha = hash('sha256', $bytes);
+                            $pdfSha = $output['pdf_sha256'] ?? '';
+                            if (is_string($pdfSha) && $pdfSha !== '' && $pdfSha !== 'TBD' && $pdfSha !== $sha) {
+                                fwrite(STDERR, "ERROR: example {$id} pdf_sha256 mismatch (manifest vs file)\n");
+                                $errors++;
+                            }
+                        }
+                    }
                 }
             }
 

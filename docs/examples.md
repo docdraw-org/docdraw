@@ -28,8 +28,8 @@ Source of truth:
 - **renderer_profile**: `DD-PDF-1`
 - **Normalized golden (today)**: `assets/examples/quickstart.normalized.docdraw`
 - **normalized_sha256**: `c3e3cace236789fe8b917df7ed262e4478467f68169dfa7b4e4f6dcc18bf7808`
-- **compiler_version**: `TBD`
-- **pdf_sha256**: `TBD`
+- **compiler_version**: `docdraw-php-ddpdf1-proto`
+- **pdf_sha256**: `4e61873e3488f997d7ef3a6db45c51c4d1a812913c65770650510b59f5401a56`
 - **last_generated**: `TBD`
 - **Expected Output Contract**:
   - MUST: Bullets render with explicit nesting from `-L` levels.
@@ -49,8 +49,8 @@ Source of truth:
 - **renderer_profile**: `DD-PDF-1`
 - **Normalized golden (today)**: `assets/examples/list-wrapping-and-continuations.normalized.docdraw`
 - **normalized_sha256**: `1d13ac9c6aa55d5e7b2b9811720917f6a1480d24cc1094935d569074b8e991c5`
-- **compiler_version**: `TBD`
-- **pdf_sha256**: `TBD`
+- **compiler_version**: `docdraw-php-ddpdf1-proto`
+- **pdf_sha256**: `a49e0d4479be4699885f42a91719c386601dc8819528ca8044cd730f08849b0f`
 - **last_generated**: `TBD`
 - **Expected Output Contract**:
   - MUST: Long list items wrap cleanly without changing indentation.
@@ -68,8 +68,8 @@ Source of truth:
 - **renderer_profile**: `DD-PDF-1`
 - **Normalized golden (today)**: `assets/examples/mixed-lists-and-numbering.normalized.docdraw`
 - **normalized_sha256**: `26536ae2d191305e0d820fb5d6e43050512333ac5d73ff0077fdb6c115675e4b`
-- **compiler_version**: `TBD`
-- **pdf_sha256**: `TBD`
+- **compiler_version**: `docdraw-php-ddpdf1-proto`
+- **pdf_sha256**: `6ffc7e706828d30b26941b887c8c40128f21cde3b67ec6b5af512c47e5c55ffe`
 - **last_generated**: `TBD`
 - **Expected Output Contract**:
   - MUST: Ordered list numbering restarts after a heading (new ordered list block).

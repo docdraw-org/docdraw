@@ -14,6 +14,7 @@ Usage:
   docdraw validate <file.docdraw>
   docdraw normalize <file.docdraw> [-o <out.docdraw>]
   docdraw convert --from dmp1 <file.md> [-o <out.docdraw>]
+  docdraw render <file.docdraw> -o <out.pdf>
 
 Notes:
   - This CLI is intentionally minimal until the reference compiler exists.
@@ -135,6 +136,46 @@ if ($cmd === 'convert') {
     } else {
         echo $docdraw;
     }
+    exit(0);
+}
+
+if ($cmd === 'render') {
+    $path = $argv[0] ?? null;
+    if (!is_string($path) || $path === '') usage();
+    $outPath = null;
+    for ($i = 1; $i < count($argv); $i++) {
+        if ($argv[$i] === '-o' && isset($argv[$i + 1])) {
+            $outPath = $argv[$i + 1];
+        }
+    }
+    if (!$outPath) usage();
+
+    $autoload = __DIR__ . '/../vendor/autoload.php';
+    if (!is_file($autoload)) {
+        fwrite(STDERR, "ERROR: PDF renderer dependency not installed.\n");
+        fwrite(STDERR, "Run: composer install\n");
+        exit(1);
+    }
+    require_once $autoload;
+    require_once __DIR__ . '/../src/pdf/DDPdf1Renderer.php';
+
+    $text = @file_get_contents($path);
+    if ($text === false) {
+        fwrite(STDERR, "ERROR: cannot read file: {$path}\n");
+        exit(1);
+    }
+    $val = docdraw_validate_v1($text);
+    if (!$val['ok']) {
+        $err = $val['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
+        $line = isset($err['line']) ? ('line ' . $err['line'] . ': ') : '';
+        fwrite(STDERR, "FAIL: {$line}{$err['code']}: {$err['message']}\n");
+        exit(3);
+    }
+
+    $renderer = new \DocDraw\Pdf\DDPdf1Renderer();
+    @mkdir(dirname($outPath), 0770, true);
+    $renderer->render($text, $outPath);
+    echo "OK: wrote {$outPath}\n";
     exit(0);
 }
 

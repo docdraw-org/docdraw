@@ -12,6 +12,7 @@ examples-check:
 
 examples-update:
 	@php scripts/update_normalized.php
+	@php scripts/update_pdfs.php
 	@php scripts/generate_examples_docs.php
 	@php scripts/validate_examples.php
 

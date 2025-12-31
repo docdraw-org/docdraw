@@ -23,6 +23,13 @@ cd docdraw
 chmod +x bin/docdraw
 ```
 
+## Optional: install PDF rendering dependencies
+Only needed for `docdraw render`:
+
+```text
+composer install
+```
+
 ## Verify
 ```text
 ./bin/docdraw --help

@@ -6,6 +6,12 @@ Status: Draft (values below should be treated as defaults until finalized).
 
 **Note:** DocDraw v1 (language) is frozen; DD‑PDF‑1 defaults may still be finalized as the reference compiler is implemented.
 
+## Reference compiler status (PHP)
+There is now a **prototype PHP renderer** accessible via:
+- `./bin/docdraw render <file.docdraw> -o <out.pdf>`
+
+Byte-determinism has been verified for repeated renders of the same input on the same environment (SHA256 match), and the next step is wiring PDF generation into the examples harness and manifest (`pdf_sha256`).
+
 ## 0) Goals
 - Professional “standard document” look: clean paragraphs, readable lists, consistent spacing.
 - Deterministic: same DocDraw input → same PDF output.
