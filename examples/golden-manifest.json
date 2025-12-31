@@ -21,7 +21,7 @@
                 "renderer_profile": "DD-PDF-1",
                 "pdf_path": "assets/examples/quickstart.pdf",
                 "compiler_version": "docdraw-php-ddpdf1-proto",
-                "pdf_sha256": "4e61873e3488f997d7ef3a6db45c51c4d1a812913c65770650510b59f5401a56",
+                "pdf_sha256": "3479f716e938fceed3ee94f3649c9a02fc579463c22e4dfcb2f24fac34d92020",
                 "normalized_path": "assets/examples/quickstart.normalized.docdraw",
                 "normalized_sha256": "c3e3cace236789fe8b917df7ed262e4478467f68169dfa7b4e4f6dcc18bf7808",
                 "last_generated": "TBD"
@@ -49,7 +49,7 @@
                 "renderer_profile": "DD-PDF-1",
                 "pdf_path": "assets/examples/list-wrapping-and-continuations.pdf",
                 "compiler_version": "docdraw-php-ddpdf1-proto",
-                "pdf_sha256": "a49e0d4479be4699885f42a91719c386601dc8819528ca8044cd730f08849b0f",
+                "pdf_sha256": "09d38b348ea1a4c414c482d53e3cf114bc7b126b782788cb3372cde4f9616199",
                 "normalized_path": "assets/examples/list-wrapping-and-continuations.normalized.docdraw",
                 "normalized_sha256": "1d13ac9c6aa55d5e7b2b9811720917f6a1480d24cc1094935d569074b8e991c5",
                 "last_generated": "TBD"
@@ -75,7 +75,7 @@
                 "renderer_profile": "DD-PDF-1",
                 "pdf_path": "assets/examples/mixed-lists-and-numbering.pdf",
                 "compiler_version": "docdraw-php-ddpdf1-proto",
-                "pdf_sha256": "6ffc7e706828d30b26941b887c8c40128f21cde3b67ec6b5af512c47e5c55ffe",
+                "pdf_sha256": "22aeec5bb952ea950159fcc7ac59d481c68ab161041efeb6d5fabb1fee3d248a",
                 "normalized_path": "assets/examples/mixed-lists-and-numbering.normalized.docdraw",
                 "normalized_sha256": "26536ae2d191305e0d820fb5d6e43050512333ac5d73ff0077fdb6c115675e4b",
                 "last_generated": "TBD"

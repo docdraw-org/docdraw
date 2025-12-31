@@ -4,17 +4,16 @@
 
 Golden examples are the “trust builder” for a standard: **input + deterministic compiler + expected output** that implementations can compare against.
 
-## Phase 1 (now): useful placeholders (no dead links)
-Until the reference compiler exists, we keep **stable target filenames** for golden PDFs, but we do **not** hand-upload “random” PDFs:
+## Phase 2 (live): golden PDFs + hashes
+These examples now include **compiler-produced golden PDFs** with a recorded `pdf_sha256` in the manifest.
 
-- Golden PDFs must be produced by the **reference compiler** to be meaningful.
-- Instead, each example defines an **Expected Output Contract** that implementers can use immediately.
-- We also publish a deterministic **text-only golden** (`*.normalized.docdraw`) + SHA256 today.
+- **Do not edit PDFs by hand.** Regenerate via the toolchain.
+- Each example also includes a deterministic **text-only golden** (`*.normalized.docdraw`) + SHA256.
 
 Source of truth:
 - `examples/golden-manifest.json`
 - `examples/source/` (inputs)
-- `assets/examples/` (future compiler-produced PDFs + normalized outputs)
+- `assets/examples/` (compiler-produced PDFs + normalized outputs)
 
 ## Examples
 
@@ -22,14 +21,14 @@ Source of truth:
 
 - **id**: `quickstart`
 - **expected**: PASS
-- **DocDraw input**: `examples/source/quickstart.docdraw`
-- **DMP-1 input**: `examples/source/quickstart.md`
-- **Golden PDF target**: `assets/examples/quickstart.pdf`
+- **DocDraw input**: [`examples/source/quickstart.docdraw`](/examples/source/quickstart.docdraw)
+- **DMP-1 input**: [`examples/source/quickstart.md`](/examples/source/quickstart.md)
+- **Golden PDF**: [`/assets/examples/quickstart.pdf`](/assets/examples/quickstart.pdf)
 - **renderer_profile**: `DD-PDF-1`
-- **Normalized golden (today)**: `assets/examples/quickstart.normalized.docdraw`
+- **Normalized golden**: [`/assets/examples/quickstart.normalized.docdraw`](/assets/examples/quickstart.normalized.docdraw)
 - **normalized_sha256**: `c3e3cace236789fe8b917df7ed262e4478467f68169dfa7b4e4f6dcc18bf7808`
 - **compiler_version**: `docdraw-php-ddpdf1-proto`
-- **pdf_sha256**: `4e61873e3488f997d7ef3a6db45c51c4d1a812913c65770650510b59f5401a56`
+- **pdf_sha256**: `3479f716e938fceed3ee94f3649c9a02fc579463c22e4dfcb2f24fac34d92020`
 - **last_generated**: `TBD`
 - **Expected Output Contract**:
   - MUST: Bullets render with explicit nesting from `-L` levels.
@@ -43,14 +42,14 @@ Source of truth:
 
 - **id**: `list-wrapping-and-continuations`
 - **expected**: PASS
-- **DocDraw input**: `examples/source/list-wrapping-and-continuations.docdraw`
-- **DMP-1 input**: `examples/source/list-wrapping-and-continuations.md`
-- **Golden PDF target**: `assets/examples/list-wrapping-and-continuations.pdf`
+- **DocDraw input**: [`examples/source/list-wrapping-and-continuations.docdraw`](/examples/source/list-wrapping-and-continuations.docdraw)
+- **DMP-1 input**: [`examples/source/list-wrapping-and-continuations.md`](/examples/source/list-wrapping-and-continuations.md)
+- **Golden PDF**: [`/assets/examples/list-wrapping-and-continuations.pdf`](/assets/examples/list-wrapping-and-continuations.pdf)
 - **renderer_profile**: `DD-PDF-1`
-- **Normalized golden (today)**: `assets/examples/list-wrapping-and-continuations.normalized.docdraw`
+- **Normalized golden**: [`/assets/examples/list-wrapping-and-continuations.normalized.docdraw`](/assets/examples/list-wrapping-and-continuations.normalized.docdraw)
 - **normalized_sha256**: `1d13ac9c6aa55d5e7b2b9811720917f6a1480d24cc1094935d569074b8e991c5`
 - **compiler_version**: `docdraw-php-ddpdf1-proto`
-- **pdf_sha256**: `a49e0d4479be4699885f42a91719c386601dc8819528ca8044cd730f08849b0f`
+- **pdf_sha256**: `09d38b348ea1a4c414c482d53e3cf114bc7b126b782788cb3372cde4f9616199`
 - **last_generated**: `TBD`
 - **Expected Output Contract**:
   - MUST: Long list items wrap cleanly without changing indentation.
@@ -62,14 +61,14 @@ Source of truth:
 
 - **id**: `mixed-lists-and-numbering`
 - **expected**: PASS
-- **DocDraw input**: `examples/source/mixed-lists-and-numbering.docdraw`
-- **DMP-1 input**: `examples/source/mixed-lists-and-numbering.md`
-- **Golden PDF target**: `assets/examples/mixed-lists-and-numbering.pdf`
+- **DocDraw input**: [`examples/source/mixed-lists-and-numbering.docdraw`](/examples/source/mixed-lists-and-numbering.docdraw)
+- **DMP-1 input**: [`examples/source/mixed-lists-and-numbering.md`](/examples/source/mixed-lists-and-numbering.md)
+- **Golden PDF**: [`/assets/examples/mixed-lists-and-numbering.pdf`](/assets/examples/mixed-lists-and-numbering.pdf)
 - **renderer_profile**: `DD-PDF-1`
-- **Normalized golden (today)**: `assets/examples/mixed-lists-and-numbering.normalized.docdraw`
+- **Normalized golden**: [`/assets/examples/mixed-lists-and-numbering.normalized.docdraw`](/assets/examples/mixed-lists-and-numbering.normalized.docdraw)
 - **normalized_sha256**: `26536ae2d191305e0d820fb5d6e43050512333ac5d73ff0077fdb6c115675e4b`
 - **compiler_version**: `docdraw-php-ddpdf1-proto`
-- **pdf_sha256**: `6ffc7e706828d30b26941b887c8c40128f21cde3b67ec6b5af512c47e5c55ffe`
+- **pdf_sha256**: `22aeec5bb952ea950159fcc7ac59d481c68ab161041efeb6d5fabb1fee3d248a`
 - **last_generated**: `TBD`
 - **Expected Output Contract**:
   - MUST: Ordered list numbering restarts after a heading (new ordered list block).
@@ -81,7 +80,7 @@ Source of truth:
 
 - **id**: `dmp1-ambiguous-indent`
 - **expected**: FAIL (`markdown_import`) codes: `AMBIGUOUS_LIST_INDENT`
-- **DMP-1 input**: `examples/source/dmp1-ambiguous-indent.md`
+- **DMP-1 input**: [`examples/source/dmp1-ambiguous-indent.md`](/examples/source/dmp1-ambiguous-indent.md)
 - **compiler_version**: `TBD`
 - **pdf_sha256**: `TBD`
 - **last_generated**: `TBD`
@@ -92,7 +91,7 @@ Source of truth:
 
 - **id**: `docdraw-invalid-list-level-jump`
 - **expected**: FAIL (`docdraw_validation`) codes: `DDV1_LIST_LEVEL_JUMP`
-- **DocDraw input**: `examples/source/docdraw-invalid-list-level-jump.docdraw`
+- **DocDraw input**: [`examples/source/docdraw-invalid-list-level-jump.docdraw`](/examples/source/docdraw-invalid-list-level-jump.docdraw)
 - **compiler_version**: `TBD`
 - **pdf_sha256**: `TBD`
 - **last_generated**: `TBD`
@@ -100,9 +99,11 @@ Source of truth:
   - MUST: Validator fails because list level jumps from `-1` to `-3` without an intervening `-2`.
   - MUST: Validator reports a stable error code (e.g. `DDV1_LIST_LEVEL_JUMP`) and a fix suggestion.
 
-## Phase 2 (later): automated golden PDFs
-As soon as a reference compiler can render PDFs:
-- Generate PDFs into `assets/examples/`
-- Update `examples/golden-manifest.json` with `compiler_version`, `pdf_sha256`, and `last_generated`
-- Do not edit PDFs by hand
+## Reproduce
+In the `docdraw` repo:
+
+```text
+make examples-update
+make examples-check
+```
 

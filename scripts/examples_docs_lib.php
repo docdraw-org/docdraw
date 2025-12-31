@@ -14,6 +14,26 @@ function docdraw_generate_examples_md(array $manifest): string
     /** @var array<int, mixed> $examples */
     $examples = $manifest['examples'] ?? [];
 
+    $hasPdfGoldens = false;
+    foreach ($examples as $ex0) {
+        if (!is_array($ex0)) {
+            continue;
+        }
+        $out0 = $ex0['output'] ?? [];
+        if (!is_array($out0)) {
+            continue;
+        }
+        $pdfPath0 = $out0['pdf_path'] ?? null;
+        $pdfSha0 = $out0['pdf_sha256'] ?? null;
+        if (
+            is_string($pdfPath0) && $pdfPath0 !== ''
+            && is_string($pdfSha0) && preg_match('/^[a-f0-9]{64}$/', $pdfSha0)
+        ) {
+            $hasPdfGoldens = true;
+            break;
+        }
+    }
+
     $lines = [];
     $lines[] = "# Golden examples";
     $lines[] = "";
@@ -21,17 +41,26 @@ function docdraw_generate_examples_md(array $manifest): string
     $lines[] = "";
     $lines[] = "Golden examples are the “trust builder” for a standard: **input + deterministic compiler + expected output** that implementations can compare against.";
     $lines[] = "";
-    $lines[] = "## Phase 1 (now): useful placeholders (no dead links)";
-    $lines[] = "Until the reference compiler exists, we keep **stable target filenames** for golden PDFs, but we do **not** hand-upload “random” PDFs:";
-    $lines[] = "";
-    $lines[] = "- Golden PDFs must be produced by the **reference compiler** to be meaningful.";
-    $lines[] = "- Instead, each example defines an **Expected Output Contract** that implementers can use immediately.";
-    $lines[] = "- We also publish a deterministic **text-only golden** (`*.normalized.docdraw`) + SHA256 today.";
-    $lines[] = "";
+    if ($hasPdfGoldens) {
+        $lines[] = "## Phase 2 (live): golden PDFs + hashes";
+        $lines[] = "These examples now include **compiler-produced golden PDFs** with a recorded `pdf_sha256` in the manifest.";
+        $lines[] = "";
+        $lines[] = "- **Do not edit PDFs by hand.** Regenerate via the toolchain.";
+        $lines[] = "- Each example also includes a deterministic **text-only golden** (`*.normalized.docdraw`) + SHA256.";
+        $lines[] = "";
+    } else {
+        $lines[] = "## Phase 1 (now): useful placeholders (no dead links)";
+        $lines[] = "Until the reference compiler exists, we keep **stable target filenames** for golden PDFs, but we do **not** hand-upload “random” PDFs:";
+        $lines[] = "";
+        $lines[] = "- Golden PDFs must be produced by the **reference compiler** to be meaningful.";
+        $lines[] = "- Instead, each example defines an **Expected Output Contract** that implementers can use immediately.";
+        $lines[] = "- We also publish a deterministic **text-only golden** (`*.normalized.docdraw`) + SHA256 today.";
+        $lines[] = "";
+    }
     $lines[] = "Source of truth:";
     $lines[] = "- `examples/golden-manifest.json`";
     $lines[] = "- `examples/source/` (inputs)";
-    $lines[] = "- `assets/examples/` (future compiler-produced PDFs + normalized outputs)";
+    $lines[] = "- `assets/examples/` (compiler-produced PDFs + normalized outputs)";
     $lines[] = "";
     $lines[] = "## Examples";
     $lines[] = "";
@@ -65,10 +94,10 @@ function docdraw_generate_examples_md(array $manifest): string
         $source = $ex['source'] ?? [];
         if (is_array($source)) {
             if (isset($source['docdraw'])) {
-                $lines[] = "- **DocDraw input**: `" . $source['docdraw'] . "`";
+                $lines[] = "- **DocDraw input**: [`" . $source['docdraw'] . "`](/" . $source['docdraw'] . ")";
             }
             if (isset($source['dmp1_markdown'])) {
-                $lines[] = "- **DMP-1 input**: `" . $source['dmp1_markdown'] . "`";
+                $lines[] = "- **DMP-1 input**: [`" . $source['dmp1_markdown'] . "`](/" . $source['dmp1_markdown'] . ")";
             }
         }
 
@@ -76,7 +105,12 @@ function docdraw_generate_examples_md(array $manifest): string
         if (is_array($out)) {
             $pdfPath = $out['pdf_path'] ?? null;
             if (is_string($pdfPath) && $pdfPath !== '') {
-                $lines[] = "- **Golden PDF target**: `" . $pdfPath . "`";
+                if (($expectedType ?? null) === 'fail') {
+                    // For FAIL cases, keep the path informational (should be null today).
+                    $lines[] = "- **Golden PDF**: `" . $pdfPath . "`";
+                } else {
+                    $lines[] = "- **Golden PDF**: [`/" . $pdfPath . "`](/" . $pdfPath . ")";
+                }
             }
             $rendererProfile = $out['renderer_profile'] ?? null;
             if (is_string($rendererProfile) && $rendererProfile !== '') {
@@ -84,7 +118,7 @@ function docdraw_generate_examples_md(array $manifest): string
             }
             $normPath = $out['normalized_path'] ?? null;
             if (is_string($normPath) && $normPath !== '') {
-                $lines[] = "- **Normalized golden (today)**: `" . $normPath . "`";
+                $lines[] = "- **Normalized golden**: [`/" . $normPath . "`](/" . $normPath . ")";
                 $lines[] = "- **normalized_sha256**: `" . ($out['normalized_sha256'] ?? 'TBD') . "`";
             }
             $lines[] = "- **compiler_version**: `" . ($out['compiler_version'] ?? 'TBD') . "`";
@@ -104,11 +138,13 @@ function docdraw_generate_examples_md(array $manifest): string
         $lines[] = "";
     }
 
-    $lines[] = "## Phase 2 (later): automated golden PDFs";
-    $lines[] = "As soon as a reference compiler can render PDFs:";
-    $lines[] = "- Generate PDFs into `assets/examples/`";
-    $lines[] = "- Update `examples/golden-manifest.json` with `compiler_version`, `pdf_sha256`, and `last_generated`";
-    $lines[] = "- Do not edit PDFs by hand";
+    $lines[] = "## Reproduce";
+    $lines[] = "In the `docdraw` repo:";
+    $lines[] = "";
+    $lines[] = "```text";
+    $lines[] = "make examples-update";
+    $lines[] = "make examples-check";
+    $lines[] = "```";
     $lines[] = "";
 
     return implode("\n", $lines) . "\n";
