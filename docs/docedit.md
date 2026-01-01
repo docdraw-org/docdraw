@@ -38,11 +38,10 @@ DocEdit is the **final approval layer**: validate structure, normalize determini
 
 ### MVP features
 
-- **Desktop app**: Windows + macOS (Linux optional)
+- **Desktop app**: Windows + macOS supported (Linux best-effort/unofficial)
 - **Local-only execution**
-- Two editing surfaces (pick one for MVP, but keep the architecture compatible):
-  - **DocDraw** (canonical)
-  - **Markdown (DMP‑1)** (input convenience → converts to DocDraw)
+- **Primary surface**: DocDraw (canonical)
+- **Markdown (DMP‑1)**: import/convert (v0.1 recommendation; can become a full editing surface later)
 - Buttons:
   - Validate
   - Normalize
@@ -92,6 +91,9 @@ Top-level object:
 - `input`: object (paths and/or inline mode)
 - `output`: object (paths and sha256 where applicable)
 - `error`: `null` or structured error
+
+Optional future-friendly shape (not required for v0.1):
+- `output.artifacts[]`: a list of produced artifacts (type/path/sha256) for commands that may generate multiple outputs.
 
 Stages (initial set):
 - `docdraw_validation`

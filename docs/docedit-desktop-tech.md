@@ -109,12 +109,12 @@ That avoids relying on `#!/usr/bin/env php` being available on Windows.
 ## Minimal app architecture (recommended)
 
 ### UI surfaces
-- Tab 1: **DocDraw**
-- Tab 2: **Markdown (DMP‑1)** (optional for v0.1; can be “Convert” button instead)
+- **Primary surface**: **DocDraw** (canonical)
+- **Markdown (DMP‑1)**: v0.1 recommendation is **import/convert**, not an equal-status editor (can be promoted later).
 
 ### Pipeline (one button path)
 - On “Render PDF”:
-  - (if Markdown tab) `docdraw --json convert --from dmp1 ...`
+  - (if starting from Markdown) `docdraw --json convert --from dmp1 ...`
   - `docdraw --json validate ...`
   - `docdraw --json normalize ...`
   - `docdraw --json render ...`
@@ -142,5 +142,10 @@ Before writing any UI code, decide:
 - where bundled PHP comes from (later)
 
 DocEdit can start as a repo skeleton even while packaging is still “manual”.
+
+## Linux status (suggested wording)
+For v0.1:
+- Windows + macOS: supported
+- Linux: best-effort/unofficial
 
 
