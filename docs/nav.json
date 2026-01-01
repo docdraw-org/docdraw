@@ -22,6 +22,7 @@
 
   { "type": "section", "title": "Project" },
   { "type": "doc", "slug": "reference-implementation", "title": "Reference implementation status" },
+  { "type": "doc", "slug": "docedit", "title": "DocEdit (desktop app plan)" },
   { "type": "doc", "slug": "ai-output-contract", "title": "AI output contract" },
   { "type": "doc", "slug": "cli", "title": "CLI (Phase 1 shim)" },
   { "type": "doc", "slug": "downloads", "title": "Downloads" },

@@ -89,6 +89,9 @@ DocEdit will provide a local UI around the same pipeline:
 
 DocEdit does not replace the standard — it implements it.
 
+Guidance (DocEdit-first roadmap + build plan):
+- `docs/docedit.md`
+
 ### Optional hosted compiler API (planned)
 A hosted compiler API may exist later as optional convenience for:
 - CI integration
