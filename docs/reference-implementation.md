@@ -11,18 +11,20 @@ This page clarifies what exists today versus what is planned, so implementers an
 - **Deterministic text-only goldens**:
   - normalized DocDraw outputs under `assets/examples/*.normalized.docdraw`
   - SHA256 hashes recorded in the manifest
+- **Deterministic PDF rendering (DD-PDF-1)**:
+  - `./bin/docdraw render <file.docdraw> -o <out.pdf>`
+  - golden PDFs under `assets/examples/*.pdf`
+  - `pdf_sha256` recorded in the manifest for PASS examples
 - **Tooling**:
-  - `make examples-update` (regenerate normalized goldens + regenerate examples docs + validate manifest)
-  - `make examples-check` (fail if docs/examples.md is out-of-date)
+  - `make examples-update` (regenerate normalized goldens + PDFs + docs + validate manifest)
+  - `make examples-check` (fail if docs/examples.md is out-of-date; check PDF determinism)
 
-## What is planned next (not implemented yet)
-- **Reference compiler** for PDF output:
-  - DocDraw → PDF compilation
-  - updates `examples/golden-manifest.json` with:
-    - `compiler_version`
-    - `pdf_sha256`
-    - `last_generated`
-  - writes PDFs under `assets/examples/*.pdf`
+## What is planned next (tightening and packaging)
+- **Tighten DD-PDF-1 defaults** (fonts/metrics/spacing) and lock behavior via more PASS examples.
+- **Improve developer ergonomics**:
+  - stable machine-readable CLI output (`--json`)
+  - stable exit codes per stage
+  - packaging for desktop distribution (DocEdit).
 
 ## What “reference” means
 When we say “reference implementation/compiler,” we mean:

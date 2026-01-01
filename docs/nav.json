@@ -9,7 +9,7 @@
   { "type": "section", "title": "Standard" },
   { "type": "doc", "slug": "docdraw-v1", "title": "DocDraw v1 (Canonical Document Format)" },
   { "type": "doc", "slug": "dmp-1", "title": "DocDraw Markdown Profile v1 (DMP-1)" },
-  { "type": "doc", "slug": "pdf-rendering-v1", "title": "DocDraw v1 → PDF Rendering Spec (Draft)" },
+  { "type": "doc", "slug": "pdf-rendering-v1", "title": "DocDraw v1 → PDF Rendering Spec (DD-PDF-1)" },
 
   { "type": "section", "title": "Validation & Conformance" },
   { "type": "doc", "slug": "validation-errors", "title": "Validation errors" },

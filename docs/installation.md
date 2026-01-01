@@ -47,8 +47,7 @@ Example:
 ```
 
 ## Status note
-PDF rendering (`docdraw render`) is **not implemented yet**.  
-Validation, normalization, and DMP‑1 conversion are implemented.
+PDF rendering (`docdraw render`) is implemented (DD‑PDF‑1).
 
 ## Source / issues
 - Repo: `https://github.com/docdraw-org/docdraw`

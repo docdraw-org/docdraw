@@ -10,7 +10,7 @@ Defines:
 - PASS vs FAIL cases
 - source inputs (DocDraw and/or DMP-1)
 - expected error codes for FAIL cases
-- output targets (normalized now; PDFs later)
+- output targets (normalized + PDFs)
 
 ### Source fixtures
 - `examples/source/*.docdraw` (canonical inputs)
@@ -30,7 +30,7 @@ Conformance covers:
 - structural validation (PASS/FAIL + stable error codes)
 - deterministic normalization (normalized output + SHA256)
 
-### Phase 2 (later)
+### Phase 2 (implemented)
 Conformance adds:
 - deterministic PDF rendering (DD-PDF-1) + SHA256
 
@@ -40,7 +40,7 @@ make examples-update
 make examples-check
 ```
 
-`examples-update` regenerates derived artifacts (normalized outputs + docs/examples.md).  
+`examples-update` regenerates derived artifacts (normalized outputs + PDFs + docs/examples.md).  
 `examples-check` fails if generated docs drift from the manifest.
 
 ## SHA256 rules

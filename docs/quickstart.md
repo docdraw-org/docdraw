@@ -1,11 +1,12 @@
 # Quickstart (5 minutes): validate + normalize + goldens
 
-This quickstart is designed to **work end-to-end today**, even before PDFs exist.
+This quickstart is designed to **work end-to-end today**: validate, normalize, and render deterministic PDFs.
 
 What you’ll do:
 1) Write a DocDraw file
 2) Validate it (fail fast)
 3) Generate deterministic “text-only golden” output (normalized DocDraw) + SHA256
+4) Render a deterministic PDF (DD‑PDF‑1) + SHA256
 
 ## 1) Write a DocDraw file
 Create a file (example):
@@ -49,10 +50,15 @@ make examples-check
 
 That will:
 - generate `assets/examples/*.normalized.docdraw`
+- render `assets/examples/*.pdf`
 - compute/store SHA256s in `examples/golden-manifest.json`
 - regenerate `docs/examples.md` from the manifest (no drift)
 
-## Next: PDFs (later)
-When the reference compiler exists, we’ll add PDF generation into the same workflow and store `pdf_sha256` in the manifest.
+## 5) Render a deterministic PDF (DD‑PDF‑1)
+
+```text
+./bin/docdraw render path/to/file.docdraw -o path/to/file.pdf
+sha256sum path/to/file.pdf
+```
 
 

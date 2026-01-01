@@ -2,15 +2,18 @@
 
 This defines the deterministic rendering rules for producing a “standard business document” PDF from **valid DocDraw v1**.
 
-Status: Draft (values below should be treated as defaults until finalized).
+Status: Implemented (defaults may still be tightened, but output is deterministic and covered by golden PDFs + hashes).
 
-**Note:** DocDraw v1 (language) is frozen; DD‑PDF‑1 defaults may still be finalized as the reference compiler is implemented.
+**Note:** DocDraw v1 (language) is frozen; DD‑PDF‑1 defaults may still be tightened, but changes are caught by the conformance suite (golden PDFs + `pdf_sha256`).
 
 ## Reference compiler status (PHP)
-There is now a **prototype PHP renderer** accessible via:
+There is now a **reference PHP renderer** accessible via:
 - `./bin/docdraw render <file.docdraw> -o <out.pdf>`
 
-Byte-determinism has been verified for repeated renders of the same input on the same environment (SHA256 match), and the next step is wiring PDF generation into the examples harness and manifest (`pdf_sha256`).
+Byte-determinism is enforced by the harness:
+- PASS examples have golden PDFs under `assets/examples/*.pdf`
+- `pdf_sha256` is recorded in `examples/golden-manifest.json`
+- determinism is checked via `make examples-check`
 
 ## 0) Goals
 - Professional “standard document” look: clean paragraphs, readable lists, consistent spacing.
