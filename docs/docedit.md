@@ -149,6 +149,9 @@ DocEdit needs exit codes that map to UI outcomes.
 
 DocEdit should treat `2` as “show error inline”, `3` as “show error + bug report CTA”, and `1` as “engine crashed”.
 
+## Desktop tech stack suggestions
+See: [DocEdit Desktop tech stack (Windows + macOS)](docedit-desktop-tech.md)
+
 ## Packaging (desktop reality)
 
 The hard part is not PHP code — it’s shipping a working engine on Windows/macOS with **zero user setup**.
