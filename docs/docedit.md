@@ -10,6 +10,27 @@ DocEdit is a product that **implements** the DocDraw ecosystem. It does not repl
 
 Nothing ships that violates that order.
 
+## Ecosystem map (repos + sites)
+
+DocEdit only works if the ecosystem roles stay clean and non-overlapping.
+
+### Canonical roles (public-facing)
+
+- **DocDraw.org**: the *standard* and *verification artifacts* (specs, conformance suite, downloads).
+- **DocEdit.com**: the *product* site (DocEdit Desktop) — marketing, pricing, downloads, support.
+- **DocDraw.com** (optional, later): a *service* (API) that scales rendering/automation once the local engine is proven.
+
+### Repos (source-of-truth)
+
+- **`docdraw-org/docdraw`**: source-of-truth for the **standard + local toolchain**:
+  - specs (DocDraw v1, DMP‑1, DD‑PDF‑1)
+  - conformance suite (`examples/golden-manifest.json`, PASS/FAIL fixtures, goldens + SHA256)
+  - engine CLI (`bin/docdraw`) and harness (`make examples-update`, `make examples-check`, bundles)
+- **`docdraw-org/website`**: website repo for **DocDraw.org** publishing.
+  - pulls/syncs generated docs + artifacts from `docdraw` to avoid drift
+
+DocEdit Desktop should treat `docdraw` as a **compiler dependency** and pin to a known-good release/tag (not “whatever is on main today”).
+
 ## What exists today (foundation)
 
 From the `docdraw` repo (and published on DocDraw.org):
