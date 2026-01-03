@@ -83,8 +83,9 @@ function cli_success(string $format, array $payload): never
 /**
  * @param 'text'|'json' $format
  * @param array{code:string,message:string,line?:int,hint?:string|null} $err
+ * @param array<string,mixed> $input
  */
-function cli_fail(string $format, string $command, string $stage, array $err, int $exitCode): never
+function cli_fail(string $format, string $command, string $stage, array $err, int $exitCode, array $input = []): never
 {
     if ($format === 'json') {
         emit_json([
@@ -92,7 +93,7 @@ function cli_fail(string $format, string $command, string $stage, array $err, in
             'ok' => false,
             'command' => $command,
             'stage' => $stage,
-            'input' => new stdClass(),
+            'input' => $input ?: new stdClass(),
             'output' => new stdClass(),
             'error' => [
                 'code' => (string)$err['code'],
@@ -177,7 +178,7 @@ if ($cmd === 'validate') {
     if (!is_string($path) || $path === '') usage();
     $text = @file_get_contents($path);
     if ($text === false) {
-        cli_fail($format, 'validate', 'docdraw_validation', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$path}"], EXIT_INTERNAL);
+        cli_fail($format, 'validate', 'docdraw_validation', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$path}"], EXIT_INTERNAL, ['path' => $path]);
     }
     $res = docdraw_validate_v1($text);
     if ($res['ok']) {
@@ -192,7 +193,7 @@ if ($cmd === 'validate') {
         ]);
     }
     $err = $res['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
-    cli_fail($format, 'validate', 'docdraw_validation', $err, EXIT_INVALID_INPUT);
+    cli_fail($format, 'validate', 'docdraw_validation', $err, EXIT_INVALID_INPUT, ['path' => $path]);
 }
 
 if ($cmd === 'normalize') {
@@ -210,18 +211,18 @@ if ($cmd === 'normalize') {
     }
     $text = @file_get_contents($path);
     if ($text === false) {
-        cli_fail($format, 'normalize', 'docdraw_normalization', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$path}"], EXIT_INTERNAL);
+        cli_fail($format, 'normalize', 'docdraw_normalization', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$path}"], EXIT_INTERNAL, ['path' => $path]);
     }
     // Normalize should not "repair" invalid structure for UI clients. Validate first.
     $val = docdraw_validate_v1($text);
     if (!$val['ok']) {
         $err = $val['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
-        cli_fail($format, 'normalize', 'docdraw_validation', $err, EXIT_INVALID_INPUT);
+        cli_fail($format, 'normalize', 'docdraw_validation', $err, EXIT_INVALID_INPUT, ['path' => $path]);
     }
     $norm = docdraw_normalize($text);
     if ($outPath) {
         if (@file_put_contents($outPath, $norm) === false) {
-            cli_fail($format, 'normalize', 'docdraw_normalization', ['code' => 'DDCLI_CANNOT_WRITE_FILE', 'message' => "Cannot write output: {$outPath}"], EXIT_INTERNAL);
+            cli_fail($format, 'normalize', 'docdraw_normalization', ['code' => 'DDCLI_CANNOT_WRITE_FILE', 'message' => "Cannot write output: {$outPath}"], EXIT_INTERNAL, ['path' => $path]);
         }
         $sha = sha256_file_bytes($outPath);
         if ($format === 'json') {
@@ -288,12 +289,12 @@ if ($cmd === 'convert') {
     if ($from !== 'dmp1' || !$file) usage();
     $md = @file_get_contents($file);
     if ($md === false) {
-        cli_fail($format, 'convert', 'markdown_import', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$file}"], EXIT_INTERNAL);
+        cli_fail($format, 'convert', 'markdown_import', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$file}"], EXIT_INTERNAL, ['path' => $file, 'from' => $from]);
     }
     $res = dmp1_convert_to_docdraw($md);
     if (!$res['ok']) {
         $err = $res['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
-        cli_fail($format, 'convert', 'markdown_import', $err, EXIT_INVALID_INPUT);
+        cli_fail($format, 'convert', 'markdown_import', $err, EXIT_INVALID_INPUT, ['path' => $file, 'from' => $from]);
     }
     $docdraw = $res['docdraw'] ?? '';
 
@@ -301,12 +302,12 @@ if ($cmd === 'convert') {
     $val = docdraw_validate_v1($docdraw);
     if (!$val['ok']) {
         $err = $val['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
-        cli_fail($format, 'convert', 'internal', ['code' => 'DDCLI_CONVERTER_PRODUCED_INVALID_DOCDRAW', 'message' => 'Converter produced invalid DocDraw output.', 'line' => $err['line'] ?? null], EXIT_INTERNAL);
+        cli_fail($format, 'convert', 'internal', ['code' => 'DDCLI_CONVERTER_PRODUCED_INVALID_DOCDRAW', 'message' => 'Converter produced invalid DocDraw output.', 'line' => $err['line'] ?? null], EXIT_INTERNAL, ['path' => $file, 'from' => $from]);
     }
 
     if ($outPath) {
         if (@file_put_contents($outPath, $docdraw) === false) {
-            cli_fail($format, 'convert', 'markdown_import', ['code' => 'DDCLI_CANNOT_WRITE_FILE', 'message' => "Cannot write output: {$outPath}"], EXIT_INTERNAL);
+            cli_fail($format, 'convert', 'markdown_import', ['code' => 'DDCLI_CANNOT_WRITE_FILE', 'message' => "Cannot write output: {$outPath}"], EXIT_INTERNAL, ['path' => $file, 'from' => $from]);
         }
         $sha = sha256_file_bytes($outPath);
         if ($format === 'json') {
@@ -365,19 +366,19 @@ if ($cmd === 'render') {
         cli_fail($format, 'render', 'pdf_rendering', [
             'code' => 'DDCLI_DEPENDENCY_MISSING',
             'message' => 'PDF renderer dependency not installed (missing vendor/autoload.php). Run: composer install',
-        ], EXIT_INTERNAL);
+        ], EXIT_INTERNAL, ['path' => $path]);
     }
     require_once $autoload;
     require_once __DIR__ . '/../src/pdf/DDPdf1Renderer.php';
 
     $text = @file_get_contents($path);
     if ($text === false) {
-        cli_fail($format, 'render', 'pdf_rendering', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$path}"], EXIT_INTERNAL);
+        cli_fail($format, 'render', 'pdf_rendering', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$path}"], EXIT_INTERNAL, ['path' => $path]);
     }
     $val = docdraw_validate_v1($text);
     if (!$val['ok']) {
         $err = $val['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
-        cli_fail($format, 'render', 'docdraw_validation', $err, EXIT_INVALID_INPUT);
+        cli_fail($format, 'render', 'docdraw_validation', $err, EXIT_INVALID_INPUT, ['path' => $path]);
     }
 
     $renderer = new \DocDraw\Pdf\DDPdf1Renderer();
@@ -385,7 +386,7 @@ if ($cmd === 'render') {
     try {
         $renderer->render($text, $outPath);
     } catch (Throwable $t) {
-        cli_fail($format, 'render', 'pdf_rendering', ['code' => 'DDCLI_RENDER_FAILED', 'message' => 'PDF rendering failed: ' . $t->getMessage()], EXIT_RENDER_FAILED);
+        cli_fail($format, 'render', 'pdf_rendering', ['code' => 'DDCLI_RENDER_FAILED', 'message' => 'PDF rendering failed: ' . $t->getMessage()], EXIT_RENDER_FAILED, ['path' => $path]);
     }
 
     $sha = sha256_file_bytes($outPath);
