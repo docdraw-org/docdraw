@@ -244,7 +244,7 @@ final class DDPdf1Renderer
         $pdf->Ln($spaceBefore);
 
         $pdf->SetFont('Helvetica', 'B', $size);
-        $pdf->MultiCell(0, $size + 2.0, $text, 0, 'L');
+        $pdf->MultiCell(0, $size + 2.0, $this->pdfText($text), 0, 'L');
         $pdf->SetFont('Helvetica', '', self::BODY_SIZE_PT);
         $pdf->Ln($spaceAfter);
     }
@@ -323,7 +323,7 @@ final class DDPdf1Renderer
         $textX = $markerX + self::BULLET_COL_W_PT;
         $maxW = $pdf->GetPageWidth() - self::MARGIN_PT - $textX;
 
-        $marker = $this->bulletGlyph($level);
+        $marker = $this->pdfText($this->bulletGlyph($level));
         $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
 
         // marker
@@ -340,9 +340,11 @@ final class DDPdf1Renderer
 
     private function bulletGlyph(int $level): string
     {
+        // FPDF built-in fonts use WinAnsi (Windows-1252-ish). Only a small subset of Unicode is safe.
+        // Keep nested markers ASCII to avoid mojibake in PDF output.
         if ($level === 1) return '•';
-        if ($level === 2) return '◦';
-        return '▪';
+        if ($level === 2) return 'o';
+        return '-';
     }
 
     /**
@@ -367,7 +369,7 @@ final class DDPdf1Renderer
         $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
 
         $pdf->SetX($markerX);
-        $pdf->Cell(self::BULLET_COL_W_PT, self::LINE_HEIGHT_PT, $marker, 0, 0, 'R');
+        $pdf->Cell(self::BULLET_COL_W_PT, self::LINE_HEIGHT_PT, $this->pdfText($marker), 0, 0, 'R');
 
         $this->renderListTextLines($pdf, $text, $textX, $maxW, true);
         $pdf->Ln(2.0);
@@ -405,7 +407,7 @@ final class DDPdf1Renderer
         foreach ($lines as $ln) {
             $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
             $pdf->SetX($x);
-            $pdf->MultiCell($maxW, self::LINE_HEIGHT_PT, rtrim($ln, "\r\n"), 0, 'L', true);
+            $pdf->MultiCell($maxW, self::LINE_HEIGHT_PT, $this->pdfText(rtrim($ln, "\r\n")), 0, 'L', true);
         }
         $yEnd = $pdf->GetY();
 
@@ -422,6 +424,7 @@ final class DDPdf1Renderer
     private function wrapText(FPDF $pdf, string $text, float $maxW): array
     {
         $text = preg_replace('/\s+/', ' ', trim($text)) ?? trim($text);
+        $text = $this->pdfText($text);
         if ($text === '') return [''];
 
         $words = preg_split('/\s+/', $text) ?: [];
@@ -447,6 +450,20 @@ final class DDPdf1Renderer
         }
         if ($cur !== '') $lines[] = $cur;
         return $lines ?: [''];
+    }
+
+    /**
+     * FPDF built-in fonts are not UTF-8. Convert to WinAnsi to avoid mojibake (e.g. "â€¢").
+     * We prefer CP1252 with transliteration; fall back to the original string if conversion fails.
+     */
+    private function pdfText(string $s): string
+    {
+        if ($s === '') return '';
+        $out = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $s);
+        if ($out === false) {
+            $out = @iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $s);
+        }
+        return ($out === false) ? $s : $out;
     }
 }
 
