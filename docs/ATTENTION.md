@@ -1,8 +1,6 @@
-# DocDraw v1 attention summary (archival)
+# DocDraw v1 attention summary
 
-DocDraw v1 is **feature-complete (frozen)**. This page is kept for historical reference to show what was considered during stabilization.
-
-It does **not** change the frozen DocDraw v1 standard.
+DocDraw v1 is **pre-release (not frozen yet)**. This page highlights important design decisions that affect implementers.
 
 ## Naming
 - Confirmed canonical name: **DocDraw v1**
@@ -17,7 +15,11 @@ Items that were explicitly deferred to DD-PDF-1:
 - bullet glyph selection for deep nesting
 
 ## Inline styling
-DocDraw v1 treats paragraph and list text as plain text. Inline formatting beyond plain text (e.g. bold/italic) is deferred to future versions (v1.1+ or v2 proposals).
+DocDraw v1 supports minimal, deterministic inline styling:
+- `**bold**`
+- `*italic*`
+- `++underline++`
+- `` `code` ``
 
 ## Scope confirmation
 Confirmed for DocDraw v1:

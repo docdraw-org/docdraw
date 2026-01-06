@@ -14,6 +14,138 @@ declare(strict_types=1);
  */
 
 /**
+ * Validate DocDraw v1 inline text (minimal emphasis + code).
+ *
+ * Supported spans:
+ * - **bold**
+ * - *italic*
+ * - ++underline++
+ * - `code`
+ *
+ * Rules:
+ * - spans must be well-formed on a single line
+ * - no nesting or overlap (use escapes for literal marker chars)
+ * - empty spans invalid
+ * - backslash escapes supported: \* \+ \` \\.
+ *
+ * @return array{ok:bool, error?:array{code:string, message:string, line?:int}}
+ */
+function docdraw_validate_inline_text_v1(string $text, int $lineNo): array
+{
+    $len = strlen($text);
+    $i = 0;
+
+    $isEscapable = static function (string $ch): bool {
+        return $ch === '\\' || $ch === '*' || $ch === '+' || $ch === '`';
+    };
+
+    $peek2 = static function (string $s, int $i): string {
+        return substr($s, $i, 2);
+    };
+
+    $isMarkerAt = static function (string $s, int $i): ?string {
+        $two = substr($s, $i, 2);
+        if ($two === '**' || $two === '++') return $two;
+        $one = $s[$i] ?? '';
+        if ($one === '*' || $one === '`') return $one;
+        return null;
+    };
+
+    $scanForClose = static function (string $s, int $start, string $marker) use ($len, $isEscapable, $isMarkerAt, $lineNo): array {
+        $mLen = strlen($marker);
+        $j = $start;
+        while ($j < $len) {
+            $ch = $s[$j];
+            if ($ch === '\\' && ($j + 1) < $len) {
+                $n = $s[$j + 1];
+                if ($isEscapable($n)) {
+                    $j += 2;
+                    continue;
+                }
+            }
+            // close marker
+            if ($mLen === 2) {
+                if (substr($s, $j, 2) === $marker) {
+                    return ['ok' => true, 'idx' => $j];
+                }
+            } else {
+                if ($ch === $marker) {
+                    return ['ok' => true, 'idx' => $j];
+                }
+            }
+            // nesting / overlap not allowed: any other marker inside span must be escaped
+            $other = $isMarkerAt($s, $j);
+            if ($other !== null) {
+                return [
+                    'ok' => false,
+                    'error' => [
+                        'code' => 'DDV1_INLINE_NESTING_NOT_ALLOWED',
+                        'message' => 'Inline spans must not be nested or overlapping; escape literal marker characters.',
+                        'line' => $lineNo,
+                    ],
+                ];
+            }
+            $j++;
+        }
+        return [
+            'ok' => false,
+            'error' => [
+                'code' => 'DDV1_INLINE_UNCLOSED_SPAN',
+                'message' => 'Inline span is missing a closing marker on the same line.',
+                'line' => $lineNo,
+            ],
+        ];
+    };
+
+    while ($i < $len) {
+        $ch = $text[$i];
+        if ($ch === '\\' && ($i + 1) < $len) {
+            $n = $text[$i + 1];
+            if ($isEscapable($n)) {
+                $i += 2;
+                continue;
+            }
+        }
+
+        $marker = null;
+        $two = $peek2($text, $i);
+        if ($two === '**' || $two === '++') {
+            $marker = $two;
+        } elseif ($ch === '*' || $ch === '`') {
+            $marker = $ch;
+        }
+
+        if ($marker === null) {
+            $i++;
+            continue;
+        }
+
+        $mLen = strlen($marker);
+        $openAt = $i;
+        $contentStart = $openAt + $mLen;
+        $closeRes = $scanForClose($text, $contentStart, $marker);
+        if (!$closeRes['ok']) return $closeRes;
+        $closeAt = (int)$closeRes['idx'];
+
+        if ($closeAt === $contentStart) {
+            return [
+                'ok' => false,
+                'error' => [
+                    'code' => 'DDV1_INLINE_EMPTY_SPAN',
+                    'message' => 'Inline span may not be empty.',
+                    'line' => $lineNo,
+                ],
+            ];
+        }
+
+        // Advance past the closing marker.
+        $i = $closeAt + $mLen;
+    }
+
+    return ['ok' => true];
+}
+
+/**
  * @return array{ok:bool, error?:array{code:string, message:string, line?:int}}
  */
 function docdraw_validate_v1(string $text): array
@@ -54,7 +186,9 @@ function docdraw_validate_v1(string $text): array
             if ($trim === 'br') {
                 continue;
             }
-            // content lines allowed
+            // content lines allowed (validate inline spans)
+            $inl = docdraw_validate_inline_text_v1($trim, $lineNo);
+            if (!$inl['ok']) return $inl;
             continue;
         }
 
@@ -107,28 +241,36 @@ function docdraw_validate_v1(string $text): array
         }
 
         // Headings
-        if (preg_match('/^#([1-6]):\s+.+$/', $trim)) {
+        if (preg_match('/^#([1-6]):\s+(.+)$/', $trim, $m)) {
+            $inl = docdraw_validate_inline_text_v1((string)$m[2], $lineNo);
+            if (!$inl['ok']) return $inl;
             $prevWasListItem = false;
             $prevListLevel = null;
             continue;
         }
 
         // Paragraph single-line
-        if (preg_match('/^p:\s+.*$/', $trim)) {
+        if (preg_match('/^p:\s+(.+)$/', $trim, $m)) {
+            $inl = docdraw_validate_inline_text_v1((string)$m[1], $lineNo);
+            if (!$inl['ok']) return $inl;
             $prevWasListItem = false;
             $prevListLevel = null;
             continue;
         }
 
         // Quote single-line
-        if (preg_match('/^q:\s+.*$/', $trim)) {
+        if (preg_match('/^q:\s+(.+)$/', $trim, $m)) {
+            $inl = docdraw_validate_inline_text_v1((string)$m[1], $lineNo);
+            if (!$inl['ok']) return $inl;
             $prevWasListItem = false;
             $prevListLevel = null;
             continue;
         }
 
         // List items (bullet and ordered)
-        if (preg_match('/^-([1-9]):\s+.+$/', $trim, $m)) {
+        if (preg_match('/^-([1-9]):\s+(.+)$/', $trim, $m)) {
+            $inl = docdraw_validate_inline_text_v1((string)$m[2], $lineNo);
+            if (!$inl['ok']) return $inl;
             $lvl = (int)$m[1];
             if ($prevWasListItem && $prevListLevel !== null && ($lvl - $prevListLevel) > 1) {
                 return [
@@ -144,7 +286,9 @@ function docdraw_validate_v1(string $text): array
             $prevListLevel = $lvl;
             continue;
         }
-        if (preg_match('/^1-([1-9]):\s+.+$/', $trim, $m)) {
+        if (preg_match('/^1-([1-9]):\s+(.+)$/', $trim, $m)) {
+            $inl = docdraw_validate_inline_text_v1((string)$m[2], $lineNo);
+            if (!$inl['ok']) return $inl;
             $lvl = (int)$m[1];
             if ($prevWasListItem && $prevListLevel !== null && ($lvl - $prevListLevel) > 1) {
                 return [
@@ -265,6 +409,13 @@ function dmp1_convert_to_docdraw(string $markdown): array
             $lvl = strlen($m[1]);
             $text = preg_replace('/\s+#+\s*$/', '', $m[2]) ?? $m[2];
             $text = trim($text);
+            $inl = docdraw_validate_inline_text_v1($text, $lineNo);
+            if (!$inl['ok']) {
+                $err = $inl['error'] ?? ['code' => 'DMP1_INVALID_INLINE', 'message' => 'Invalid inline styling.'];
+                $err['code'] = 'DMP1_' . $err['code'];
+                $err['line'] = $lineNo;
+                return ['ok' => false, 'error' => $err];
+            }
             $out[] = '#' . $lvl . ': ' . $text;
             continue;
         }
@@ -277,7 +428,15 @@ function dmp1_convert_to_docdraw(string $markdown): array
                 return ['ok' => false, 'error' => ['code' => 'AMBIGUOUS_LIST_INDENT', 'message' => 'List indentation must increase by exactly 4 spaces per level.', 'line' => $lineNo]];
             }
             $level = intdiv($indent, 4) + 1;
-            $out[] = '-' . $level . ': ' . trim($m[3]);
+            $txt = trim($m[3]);
+            $inl = docdraw_validate_inline_text_v1($txt, $lineNo);
+            if (!$inl['ok']) {
+                $err = $inl['error'] ?? ['code' => 'DMP1_INVALID_INLINE', 'message' => 'Invalid inline styling.'];
+                $err['code'] = 'DMP1_' . $err['code'];
+                $err['line'] = $lineNo;
+                return ['ok' => false, 'error' => $err];
+            }
+            $out[] = '-' . $level . ': ' . $txt;
             continue;
         }
         if (preg_match('/^(\s*)(\d+)\.\s+(.+)$/', $line, $m)) {
@@ -287,14 +446,30 @@ function dmp1_convert_to_docdraw(string $markdown): array
                 return ['ok' => false, 'error' => ['code' => 'AMBIGUOUS_LIST_INDENT', 'message' => 'List indentation must increase by exactly 4 spaces per level.', 'line' => $lineNo]];
             }
             $level = intdiv($indent, 4) + 1;
-            $out[] = '1-' . $level . ': ' . trim($m[3]);
+            $txt = trim($m[3]);
+            $inl = docdraw_validate_inline_text_v1($txt, $lineNo);
+            if (!$inl['ok']) {
+                $err = $inl['error'] ?? ['code' => 'DMP1_INVALID_INLINE', 'message' => 'Invalid inline styling.'];
+                $err['code'] = 'DMP1_' . $err['code'];
+                $err['line'] = $lineNo;
+                return ['ok' => false, 'error' => $err];
+            }
+            $out[] = '1-' . $level . ': ' . $txt;
             continue;
         }
 
         // Blockquotes (single line)
         if (preg_match('/^>\s?(.*)$/', $trim, $m)) {
             $flushPara();
-            $out[] = 'q: ' . trim($m[1]);
+            $txt = trim($m[1]);
+            $inl = docdraw_validate_inline_text_v1($txt, $lineNo);
+            if (!$inl['ok']) {
+                $err = $inl['error'] ?? ['code' => 'DMP1_INVALID_INLINE', 'message' => 'Invalid inline styling.'];
+                $err['code'] = 'DMP1_' . $err['code'];
+                $err['line'] = $lineNo;
+                return ['ok' => false, 'error' => $err];
+            }
+            $out[] = 'q: ' . $txt;
             continue;
         }
 
@@ -304,6 +479,13 @@ function dmp1_convert_to_docdraw(string $markdown): array
         }
 
         // Otherwise paragraph text
+        $inl = docdraw_validate_inline_text_v1($trim, $lineNo);
+        if (!$inl['ok']) {
+            $err = $inl['error'] ?? ['code' => 'DMP1_INVALID_INLINE', 'message' => 'Invalid inline styling.'];
+            $err['code'] = 'DMP1_' . $err['code'];
+            $err['line'] = $lineNo;
+            return ['ok' => false, 'error' => $err];
+        }
         $para[] = $trim;
     }
 

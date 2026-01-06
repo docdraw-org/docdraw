@@ -4,7 +4,7 @@ This defines the deterministic rendering rules for producing a “standard busin
 
 Status: Implemented (defaults may still be tightened, but output is deterministic and covered by golden PDFs + hashes).
 
-**Note:** DocDraw v1 (language) is frozen; DD‑PDF‑1 defaults may still be tightened, but changes are caught by the conformance suite (golden PDFs + `pdf_sha256`).
+**Note:** DocDraw v1 (language) is pre-release and may evolve; DD‑PDF‑1 defaults may still be tightened, but changes are caught by the conformance suite (golden PDFs + `pdf_sha256`).
 
 ## Reference compiler status (PHP)
 There is now a **reference PHP renderer** accessible via:

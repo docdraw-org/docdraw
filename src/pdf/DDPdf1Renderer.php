@@ -217,6 +217,249 @@ final class DDPdf1Renderer
         $pdf->Output('F', $outPath);
     }
 
+    /**
+     * Parse DocDraw inline text into styled runs. This is intentionally strict but "safe":
+     * if parsing fails (should be prevented by validation), we fall back to rendering raw text.
+     *
+     * Supported:
+     * - **bold**
+     * - *italic*
+     * - ++underline++
+     * - `code`
+     *
+     * @return array<int,array{text:string,font:string,style:string}>
+     */
+    private function parseInlineRunsSafe(string $text, string $baseFont, string $baseStyle): array
+    {
+        $len = strlen($text);
+        $i = 0;
+
+        $runs = [];
+        $buf = '';
+        $bufFont = $baseFont;
+        $bufStyle = $baseStyle;
+
+        $flush = function () use (&$runs, &$buf, &$bufFont, &$bufStyle): void {
+            if ($buf === '') return;
+            $runs[] = ['text' => $buf, 'font' => $bufFont, 'style' => $bufStyle];
+            $buf = '';
+        };
+
+        $isEscapable = static function (string $ch): bool {
+            return $ch === '\\' || $ch === '*' || $ch === '+' || $ch === '`';
+        };
+
+        $isMarkerAt = static function (string $s, int $idx): ?string {
+            $two = substr($s, $idx, 2);
+            if ($two === '**' || $two === '++') return $two;
+            $one = $s[$idx] ?? '';
+            if ($one === '*' || $one === '`') return $one;
+            return null;
+        };
+
+        try {
+            while ($i < $len) {
+                $ch = $text[$i];
+                if ($ch === '\\' && ($i + 1) < $len) {
+                    $n = $text[$i + 1];
+                    if ($isEscapable($n)) {
+                        $buf .= $n;
+                        $i += 2;
+                        continue;
+                    }
+                }
+
+                $marker = null;
+                $two = substr($text, $i, 2);
+                if ($two === '**' || $two === '++') {
+                    $marker = $two;
+                } elseif ($ch === '*' || $ch === '`') {
+                    $marker = $ch;
+                }
+
+                if ($marker === null) {
+                    $buf .= $ch;
+                    $i++;
+                    continue;
+                }
+
+                $mLen = strlen($marker);
+                $flush();
+                $i += $mLen;
+
+                // scan for close; nesting disallowed (must be escaped)
+                $content = '';
+                while ($i < $len) {
+                    $ch2 = $text[$i];
+                    if ($ch2 === '\\' && ($i + 1) < $len) {
+                        $n2 = $text[$i + 1];
+                        if ($isEscapable($n2)) {
+                            $content .= $n2;
+                            $i += 2;
+                            continue;
+                        }
+                    }
+                    if ($mLen === 2) {
+                        if (substr($text, $i, 2) === $marker) {
+                            $i += 2;
+                            break;
+                        }
+                    } else {
+                        if ($ch2 === $marker) {
+                            $i += 1;
+                            break;
+                        }
+                    }
+                    $other = $isMarkerAt($text, $i);
+                    if ($other !== null) {
+                        throw new \RuntimeException('Inline nesting not allowed');
+                    }
+                    $content .= $ch2;
+                    $i++;
+                }
+
+                if ($content === '') {
+                    throw new \RuntimeException('Empty/unclosed inline span');
+                }
+
+                $font = $baseFont;
+                $style = $baseStyle;
+                if ($marker === '**') {
+                    $style = $this->mergeStyle($baseStyle, 'B');
+                } elseif ($marker === '*') {
+                    $style = $this->mergeStyle($baseStyle, 'I');
+                } elseif ($marker === '++') {
+                    $style = $this->mergeStyle($baseStyle, 'U');
+                } elseif ($marker === '`') {
+                    $font = 'Courier';
+                    $style = '';
+                }
+
+                $runs[] = ['text' => $content, 'font' => $font, 'style' => $style];
+
+                // reset buffer style
+                $bufFont = $baseFont;
+                $bufStyle = $baseStyle;
+            }
+        } catch (\Throwable $t) {
+            // Fallback: render raw text deterministically.
+            return [['text' => $text, 'font' => $baseFont, 'style' => $baseStyle]];
+        }
+
+        $flush();
+        return $runs ?: [['text' => $text, 'font' => $baseFont, 'style' => $baseStyle]];
+    }
+
+    private function mergeStyle(string $base, string $add): string
+    {
+        $all = $base . $add;
+        $out = '';
+        foreach (['B', 'I', 'U'] as $flag) {
+            if (str_contains($all, $flag)) $out .= $flag;
+        }
+        return $out;
+    }
+
+    /**
+     * @param array<int,array{text:string,font:string,style:string}> $runs
+     * @return array<int,array<int,array{text:string,font:string,style:string}>>
+     */
+    private function wrapInlineRuns(FPDF $pdf, array $runs, float $fontSizePt, float $maxW): array
+    {
+        // Tokenize into words/spaces (collapse any whitespace run into a single space).
+        $tokens = [];
+        foreach ($runs as $r) {
+            $parts = preg_split('/(\s+)/', $r['text'], -1, PREG_SPLIT_DELIM_CAPTURE);
+            if (!$parts) continue;
+            foreach ($parts as $p) {
+                if ($p === '') continue;
+                $isSpace = preg_match('/^\s+$/', $p) === 1;
+                $tokens[] = [
+                    'text' => $isSpace ? ' ' : $p,
+                    'font' => $r['font'],
+                    'style' => $r['style'],
+                    'isSpace' => $isSpace,
+                ];
+            }
+        }
+
+        $lines = [];
+        $cur = [];
+        $curW = 0.0;
+
+        $measure = function (array $tok) use ($pdf, $fontSizePt): float {
+            $pdf->SetFont($tok['font'], $tok['style'], $fontSizePt);
+            return (float)$pdf->GetStringWidth($this->pdfText((string)$tok['text']));
+        };
+
+        $flushLine = function () use (&$lines, &$cur): void {
+            // trim trailing spaces
+            while ($cur && ($cur[count($cur) - 1]['isSpace'] ?? false)) array_pop($cur);
+            if ($cur) $lines[] = $cur;
+            $cur = [];
+        };
+
+        foreach ($tokens as $tok) {
+            if (($tok['isSpace'] ?? false) && !$cur) {
+                continue; // no leading spaces
+            }
+            $w = $measure($tok);
+            if (!$cur) {
+                $cur[] = $tok;
+                $curW = $w;
+                continue;
+            }
+            if (($tok['isSpace'] ?? false)) {
+                if ($curW + $w <= $maxW) {
+                    $cur[] = $tok;
+                    $curW += $w;
+                } else {
+                    $flushLine();
+                    $curW = 0.0;
+                }
+                continue;
+            }
+            if ($curW + $w <= $maxW) {
+                $cur[] = $tok;
+                $curW += $w;
+                continue;
+            }
+            // new line
+            $flushLine();
+            $cur[] = $tok;
+            $curW = $w;
+        }
+        $flushLine();
+        return $lines ?: [[]];
+    }
+
+    /**
+     * Render a single line of inline tokens.
+     * @param array<int,array{text:string,font:string,style:string,isSpace?:bool}> $line
+     */
+    private function renderInlineLine(FPDF $pdf, array $line, float $x, float $maxW, float $lineH, float $fontSizePt): void
+    {
+        $pdf->SetX($x);
+        foreach ($line as $tok) {
+            $pdf->SetFont($tok['font'], $tok['style'], $fontSizePt);
+            $txt = $this->pdfText((string)$tok['text']);
+            $w = (float)$pdf->GetStringWidth($txt);
+            $pdf->Cell($w, $lineH, $txt, 0, 0, 'L');
+        }
+        $pdf->Ln($lineH);
+    }
+
+    private function renderInlineTextBlock(FPDF $pdf, string $text, float $x, float $maxW, float $fontSizePt, float $lineH, string $baseFont, string $baseStyle): void
+    {
+        $runs = $this->parseInlineRunsSafe($text, $baseFont, $baseStyle);
+        $wrapped = $this->wrapInlineRuns($pdf, $runs, $fontSizePt, $maxW);
+        foreach ($wrapped as $line) {
+            if (!$line) continue;
+            $this->ensureRoom($pdf, $lineH);
+            $this->renderInlineLine($pdf, $line, $x, $maxW, $lineH, $fontSizePt);
+        }
+    }
+
     private function splitLines(string $s): array
     {
         $s = str_replace(["\r\n", "\r"], "\n", $s);
@@ -243,8 +486,9 @@ final class DDPdf1Renderer
         $this->ensureRoom($pdf, $spaceBefore + $size + self::LINE_HEIGHT_PT);
         $pdf->Ln($spaceBefore);
 
-        $pdf->SetFont('Helvetica', 'B', $size);
-        $pdf->MultiCell(0, $size + 2.0, $this->pdfText($text), 0, 'L');
+        $maxW = $pdf->GetPageWidth() - (self::MARGIN_PT * 2);
+        $x = self::MARGIN_PT;
+        $this->renderInlineTextBlock($pdf, $text, $x, $maxW, $size, $size + 2.0, 'Helvetica', 'B');
         $pdf->SetFont('Helvetica', '', self::BODY_SIZE_PT);
         $pdf->Ln($spaceAfter);
     }
@@ -259,12 +503,7 @@ final class DDPdf1Renderer
         foreach ($chunks as $i => $chunk) {
             $chunk = trim($chunk);
             if ($chunk === '') continue;
-            $lines = $this->wrapText($pdf, $chunk, $maxW);
-            foreach ($lines as $ln) {
-                $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
-                $pdf->SetX($x);
-                $pdf->Cell($maxW, self::LINE_HEIGHT_PT, $ln, 0, 1, 'L');
-            }
+            $this->renderInlineTextBlock($pdf, $chunk, $x, $maxW, self::BODY_SIZE_PT, self::LINE_HEIGHT_PT, 'Helvetica', '');
             if ($preserveNewlines && $i < count($chunks) - 1) {
                 // explicit line break within paragraph
             }
@@ -297,12 +536,7 @@ final class DDPdf1Renderer
         $x = self::MARGIN_PT + $indent;
         $yStart = $pdf->GetY();
 
-        $lines = $this->wrapText($pdf, $text, $maxW);
-        foreach ($lines as $ln) {
-            $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
-            $pdf->SetX($x);
-            $pdf->Cell($maxW, self::LINE_HEIGHT_PT, $ln, 0, 1, 'L');
-        }
+        $this->renderInlineTextBlock($pdf, $text, $x, $maxW, self::BODY_SIZE_PT, self::LINE_HEIGHT_PT, 'Helvetica', '');
 
         // draw left rule
         $yEnd = $pdf->GetY();
@@ -379,15 +613,16 @@ final class DDPdf1Renderer
 
     private function renderListTextLines(FPDF $pdf, string $text, float $textX, float $maxW, bool $firstLineNewRow): void
     {
-        $lines = $this->wrapText($pdf, $text, $maxW);
-        foreach ($lines as $idx => $ln) {
+        $runs = $this->parseInlineRunsSafe($text, 'Helvetica', '');
+        $wrapped = $this->wrapInlineRuns($pdf, $runs, self::BODY_SIZE_PT, $maxW);
+        foreach ($wrapped as $idx => $line) {
+            if (!$line) continue;
             $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
             $pdf->SetX($textX);
             if ($idx === 0 && $firstLineNewRow) {
-                $pdf->Cell($maxW, self::LINE_HEIGHT_PT, $ln, 0, 1, 'L');
+                $this->renderInlineLine($pdf, $line, $textX, $maxW, self::LINE_HEIGHT_PT, self::BODY_SIZE_PT);
             } else {
-                // continuation: new line
-                $pdf->Cell($maxW, self::LINE_HEIGHT_PT, $ln, 0, 1, 'L');
+                $this->renderInlineLine($pdf, $line, $textX, $maxW, self::LINE_HEIGHT_PT, self::BODY_SIZE_PT);
             }
         }
     }

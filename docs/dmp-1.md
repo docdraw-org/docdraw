@@ -195,7 +195,9 @@ The following Markdown features are not supported in DMP-1:
 - Definition lists
 - Emojis as structure
 - Automatic link reference definitions
-- Inline styling beyond bold/italic
+- Inline HTML (including inline HTML used for styling)
+
+Note: DocDraw v1 supports minimal inline emphasis markers (`**` / `*` / `++` / `` ` ``). DMP-1 treats these as text-level semantics and passes them through during conversion.
 
 If encountered:
 - Conversion MUST fail

@@ -35,7 +35,7 @@ DocEdit Desktop should treat `docdraw` as a **compiler dependency** and pin to a
 
 From the `docdraw` repo (and published on DocDraw.org):
 
-- **Standards**: DocDraw v1 (frozen), DMP‑1, DD‑PDF‑1
+- **Standards**: DocDraw v1 (pre-release), DMP‑1, DD‑PDF‑1
 - **Conformance**: `examples/golden-manifest.json` + PASS/FAIL fixtures
 - **Goldens**: normalized DocDraw outputs + **golden PDFs + `pdf_sha256`**
 - **Toolchain**: `./bin/docdraw` + `make examples-update` + `make examples-check`

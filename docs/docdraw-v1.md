@@ -4,12 +4,10 @@ This document defines the **canonical, deterministic document format** used by D
 
 Note: The original drafting conversation used a different working name early on. **DocDraw v1** is the canonical name; the syntax below matches those original tokens.
 
-## Status: feature-complete (frozen)
-**DocDraw v1 is feature-complete.** The goal now is to build and harden the **reference PDF compiler** against the conformance suite.
+## Status: pre-release (not frozen)
+**DocDraw v1 is not frozen yet.** The goal is to finalize the v1 language surface and the **reference PDF compiler** together, backed by the conformance suite.
 
-Any future changes to the language (beyond clarifications/examples) should go to:
-- **v1.1+** (compatible clarifications / extensions), or
-- **v2 proposals** (breaking changes)
+Until an official v1.0 release is published, the language may evolve (strictly, with clear spec + tests).
 
 ## 1. Design Goals
 - Deterministic: same input → same output
@@ -49,6 +47,36 @@ p{
 This agreement is made between Acme LLC and Customer Inc.
 Payment is due within 15 days of invoice date.
 }
+```
+
+### 3.2.1 Inline text (emphasis + code)
+Inline styling is intentionally minimal and semantic. It is designed to support emphasis without turning DocDraw into rich text.
+
+Supported inline spans (inside any text-bearing block, e.g. `p:`, list item text, `q:`, headings, and `p{}` content lines):
+- **Bold**: `**bold**`
+- **Italic**: `*italic*`
+- **Underline**: `++underline++`
+- **Inline code**: `` `code` ``
+
+Rules (normative, v1):
+- Spans MUST be well-formed (both open and close marker present).
+- Spans MUST NOT be nested or overlap.
+- Empty spans are invalid.
+- Spans MUST NOT cross line boundaries (each line is parsed independently).
+- Backslash escapes are supported to emit literal marker characters:
+  - `\*` `\+` `` \` `` and `\\`.
+
+Examples (valid):
+
+```text
+p: This is **bold**, *italic*, ++underlined++, and `code`.
+```
+
+Examples (invalid):
+
+```text
+p: **bold *nested italic***   (nesting not allowed)
+p: ++unclosed underline       (missing closing ++)
 ```
 
 ### 3.3 Explicit line breaks (only inside `p{}`)

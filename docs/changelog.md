@@ -9,7 +9,6 @@ This changelog tracks changes to the DocDraw.org standard documents.
 - Add `docs/nav.json` to impose a Bootstrap-docs-style navigation order
 
 ## DocDraw v1 status
-- **DocDraw v1 is feature-complete (frozen)**. Next major work is the reference PDF compiler (DD-PDF-1) and golden PDF generation.
-- Future language changes should go to **v1.1+** (compatible) or **v2** (breaking).
+- **DocDraw v1 is pre-release (not frozen yet)**. The language and the reference compiler are being finalized together.
 
 
