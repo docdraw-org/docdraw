@@ -439,11 +439,25 @@ final class DDPdf1Renderer
      */
     private function renderInlineLine(FPDF $pdf, array $line, float $x, float $maxW, float $lineH, float $fontSizePt): void
     {
+        // Inline code (`code`) is represented as Courier runs. We render those with a subtle
+        // background fill (similar to code blocks) so they're visually distinct in PDF output.
         $pdf->SetX($x);
+        $yLine = (float)$pdf->GetY();
         foreach ($line as $tok) {
-            $pdf->SetFont($tok['font'], $tok['style'], $fontSizePt);
             $txt = $this->pdfText((string)$tok['text']);
+            $pdf->SetFont($tok['font'], $tok['style'], $fontSizePt);
             $w = (float)$pdf->GetStringWidth($txt);
+            $isSpace = (bool)($tok['isSpace'] ?? false);
+            if ($tok['font'] === 'Courier' && !$isSpace && $w > 0.0) {
+                $xTok = (float)$pdf->GetX();
+                // No padding here (to avoid changing wrapping). Keep the box within line height.
+                $h = max(1.0, $lineH - 2.0);
+                $yBox = $yLine + (($lineH - $h) / 2.0);
+                $pdf->SetFillColor(0xF6, 0xF6, 0xF6);
+                $pdf->Rect($xTok, $yBox, $w, $h, 'F');
+                // restore default text color (Rect doesn't change it, but keep this explicit)
+                $pdf->SetTextColor(0x11, 0x11, 0x11);
+            }
             $pdf->Cell($w, $lineH, $txt, 0, 0, 'L');
         }
         $pdf->Ln($lineH);
