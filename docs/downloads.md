@@ -25,7 +25,7 @@ sha256sum -c docdraw-conformance-bundle-v1.zip.sha256
 A snapshot release artifact for the **DocDraw v1.0** standard (docs + examples + goldens).
 
 - **Bundle**: `/assets/downloads/docdraw-spec-bundle-v1.0.zip`
-- **SHA256**: `6d9b1069d87bd2c0f5f582cdbca0de0fa1adc7382bfbd87b342e2d72d605239b`
+- **SHA256**: `eb59772cb5059a5869fcafd16b178ec31e7f5a0fe5a442f152eba1a612823123`
 - **SHA file**: `/assets/downloads/docdraw-spec-bundle-v1.0.zip.sha256`
 
 ### Verify integrity
