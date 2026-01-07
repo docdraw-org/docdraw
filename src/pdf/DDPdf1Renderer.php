@@ -561,6 +561,8 @@ final class DDPdf1Renderer
         $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
 
         // marker
+        // Ensure marker uses the base list font/style (avoid inheriting bold/italic from prior inline runs).
+        $pdf->SetFont('Helvetica', '', self::BODY_SIZE_PT);
         $pdf->SetX($markerX);
         $pdf->Cell(self::BULLET_COL_W_PT, self::LINE_HEIGHT_PT, $marker, 0, 0, 'R');
 
@@ -602,6 +604,8 @@ final class DDPdf1Renderer
 
         $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
 
+        // Ensure marker uses the base list font/style (avoid inheriting bold/italic from prior inline runs).
+        $pdf->SetFont('Helvetica', '', self::BODY_SIZE_PT);
         $pdf->SetX($markerX);
         $pdf->Cell(self::BULLET_COL_W_PT, self::LINE_HEIGHT_PT, $this->pdfText($marker), 0, 0, 'R');
 
@@ -625,6 +629,8 @@ final class DDPdf1Renderer
                 $this->renderInlineLine($pdf, $line, $textX, $maxW, self::LINE_HEIGHT_PT, self::BODY_SIZE_PT);
             }
         }
+        // Reset font so subsequent markers/blocks don't inherit the final inline run's style.
+        $pdf->SetFont('Helvetica', '', self::BODY_SIZE_PT);
     }
 
     private function renderCodeBlock(FPDF $pdf, array $lines): void
