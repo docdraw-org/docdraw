@@ -304,6 +304,25 @@ function docdraw_validate_v1(string $text): array
             $prevListLevel = $lvl;
             continue;
         }
+        // Alphabetical ordered list items (lower/upper alpha)
+        if (preg_match('/^[aA]-([1-9]):\s+(.+)$/', $trim, $m)) {
+            $inl = docdraw_validate_inline_text_v1((string)$m[2], $lineNo);
+            if (!$inl['ok']) return $inl;
+            $lvl = (int)$m[1];
+            if ($prevWasListItem && $prevListLevel !== null && ($lvl - $prevListLevel) > 1) {
+                return [
+                    'ok' => false,
+                    'error' => [
+                        'code' => 'DDV1_LIST_LEVEL_JUMP',
+                        'message' => "List level jumped from {$prevListLevel} to {$lvl}; levels may only increase by 1 between adjacent items.",
+                        'line' => $lineNo,
+                    ],
+                ];
+            }
+            $prevWasListItem = true;
+            $prevListLevel = $lvl;
+            continue;
+        }
 
         // Any other non-empty line is unknown in DocDraw v1.
         return [
@@ -437,6 +456,27 @@ function dmp1_convert_to_docdraw(string $markdown): array
                 return ['ok' => false, 'error' => $err];
             }
             $out[] = '-' . $level . ': ' . $txt;
+            continue;
+        }
+        // Alphabetical ordered lists (a. / A.) (4 spaces per level)
+        if (preg_match('/^(\s*)([a-zA-Z])\.\s+(.+)$/', $line, $m)) {
+            $flushPara();
+            $indent = strlen($m[1]);
+            if ($indent % 4 !== 0) {
+                return ['ok' => false, 'error' => ['code' => 'AMBIGUOUS_LIST_INDENT', 'message' => 'List indentation must increase by exactly 4 spaces per level.', 'line' => $lineNo]];
+            }
+            $level = intdiv($indent, 4) + 1;
+            $txt = trim($m[3]);
+            $inl = docdraw_validate_inline_text_v1($txt, $lineNo);
+            if (!$inl['ok']) {
+                $err = $inl['error'] ?? ['code' => 'DMP1_INVALID_INLINE', 'message' => 'Invalid inline styling.'];
+                $err['code'] = 'DMP1_' . $err['code'];
+                $err['line'] = $lineNo;
+                return ['ok' => false, 'error' => $err];
+            }
+            $letter = (string)$m[2];
+            $prefix = ctype_upper($letter) ? 'A' : 'a';
+            $out[] = $prefix . '-' . $level . ': ' . $txt;
             continue;
         }
         if (preg_match('/^(\s*)(\d+)\.\s+(.+)$/', $line, $m)) {

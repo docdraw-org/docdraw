@@ -148,6 +148,15 @@ Syntax:
 Syntax:
 - `code{` then content lines then `}`
 
+### 3.10 Alphabetical list items (explicit nesting)
+Syntax:
+- `a-L: text` where `L` is `1..9` (lower-alpha)
+- `A-L: text` where `L` is `1..9` (upper-alpha)
+
+Notes:
+- Like numbered lists, the renderer determines the actual sequence based on position (not any explicit number/letter in the source).
+- The `a-` / `A-` prefix controls the marker style only.
+
 ## 4. Minimal Grammar (Validation Baseline)
 These rules are intended to catch the majority of structure errors:
 
@@ -157,6 +166,8 @@ p: single-line paragraph
 p{ ... } multi-line paragraph
 -L: bullet item, L is 1–9
 1-L: numbered item, L is 1–9
+a-L: alpha item (lower), L is 1–9
+A-L: alpha item (upper), L is 1–9
 ..: continuation (must follow a list item)
 --- divider
 br only allowed inside p{}

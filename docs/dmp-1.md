@@ -133,8 +133,32 @@ Rules:
   - No mixed indentation
   - No inference
 
+### 4.4.1 Alphabetical Numbered Lists
+Accepted (lower-alpha):
+
+```text
+a. Item
+b. Item
+```
+
+Accepted (upper-alpha):
+
+```text
+A. Item
+B. Item
+```
+
+Rules:
+- The letter value is ignored during conversion
+- Order is determined by position (like numeric ordered lists)
+- Alphabetical ordered lists convert to DocDraw `a-L:` (lower) or `A-L:` (upper)
+- Nesting rules are identical to bullet / numbered lists:
+  - Exactly 4 spaces per level
+  - No mixed indentation
+  - No inference
+
 Rejected:
-- Alphabetic or roman list markers
+- Roman list markers
 - Mixed bullet + ordered markers without clear structure
 
 ### 4.5 Mixed Lists

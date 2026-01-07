@@ -84,8 +84,8 @@ final class DDPdf1Renderer
         $inCode = false;
         $codeBuf = [];
 
-        $orderedCounters = []; // per level
-        $orderedActive = false;
+        $orderedCounters = []; // per level (shared by numeric + alpha ordered lists)
+        $orderedMode = 'none'; // 'none' | 'numeric' | 'alphaLower' | 'alphaUpper'
 
         $currentListContext = null; // ['textX'=>float,'maxW'=>float]
 
@@ -99,7 +99,7 @@ final class DDPdf1Renderer
                     $codeBuf = [];
                     $inCode = false;
                     $currentListContext = null;
-                    $orderedActive = false;
+                    $orderedMode = 'none';
                     continue;
                 }
                 $codeBuf[] = $lineRaw;
@@ -112,7 +112,7 @@ final class DDPdf1Renderer
                     $pBuf = [];
                     $inPBlock = false;
                     $currentListContext = null;
-                    $orderedActive = false;
+                    $orderedMode = 'none';
                     continue;
                 }
                 $pBuf[] = $trim;
@@ -122,7 +122,7 @@ final class DDPdf1Renderer
             if ($trim === '') {
                 // Blank line: reset list continuity
                 $currentListContext = null;
-                $orderedActive = false;
+                $orderedMode = 'none';
                 $orderedCounters = [];
                 continue;
             }
@@ -142,7 +142,7 @@ final class DDPdf1Renderer
             if ($trim === '---') {
                 $this->renderDivider($pdf);
                 $currentListContext = null;
-                $orderedActive = false;
+                $orderedMode = 'none';
                 $orderedCounters = [];
                 continue;
             }
@@ -152,7 +152,7 @@ final class DDPdf1Renderer
                 $text = $m[2];
                 $this->renderHeading($pdf, $level, $text);
                 $currentListContext = null;
-                $orderedActive = false;
+                $orderedMode = 'none';
                 $orderedCounters = [];
                 continue;
             }
@@ -160,7 +160,7 @@ final class DDPdf1Renderer
             if (preg_match('/^p:\s+(.+)$/', $trim, $m)) {
                 $this->renderParagraph($pdf, $m[1], false);
                 $currentListContext = null;
-                $orderedActive = false;
+                $orderedMode = 'none';
                 $orderedCounters = [];
                 continue;
             }
@@ -168,7 +168,7 @@ final class DDPdf1Renderer
             if (preg_match('/^q:\s+(.+)$/', $trim, $m)) {
                 $this->renderQuote($pdf, $m[1]);
                 $currentListContext = null;
-                $orderedActive = false;
+                $orderedMode = 'none';
                 $orderedCounters = [];
                 continue;
             }
@@ -187,7 +187,7 @@ final class DDPdf1Renderer
             if (preg_match('/^-([1-9]):\s+(.+)$/', $trim, $m)) {
                 $lvl = (int)$m[1];
                 $text = $m[2];
-                $orderedActive = false;
+                $orderedMode = 'none';
                 $orderedCounters = [];
                 $currentListContext = $this->renderBulletItem($pdf, $lvl, $text);
                 continue;
@@ -197,8 +197,8 @@ final class DDPdf1Renderer
             if (preg_match('/^1-([1-9]):\s+(.+)$/', $trim, $m)) {
                 $lvl = (int)$m[1];
                 $text = $m[2];
-                if (!$orderedActive) {
-                    $orderedActive = true;
+                if ($orderedMode !== 'numeric') {
+                    $orderedMode = 'numeric';
                     $orderedCounters = [];
                 }
                 $currentListContext = $this->renderOrderedItem($pdf, $lvl, $text, $orderedCounters);
@@ -207,10 +207,27 @@ final class DDPdf1Renderer
                 continue;
             }
 
+            // Alphabetical ordered list item (lower/upper)
+            if (preg_match('/^([aA])-([1-9]):\s+(.+)$/', $trim, $m)) {
+                $kind = (string)$m[1];
+                $lvl = (int)$m[2];
+                $text = (string)$m[3];
+                $nextMode = ($kind === 'A') ? 'alphaUpper' : 'alphaLower';
+                if ($orderedMode !== $nextMode) {
+                    $orderedMode = $nextMode;
+                    $orderedCounters = [];
+                }
+                $upper = ($orderedMode === 'alphaUpper');
+                $currentListContext = $this->renderAlphaItem($pdf, $lvl, $text, $orderedCounters, $upper);
+                $orderedCounters = $currentListContext['counters'];
+                unset($currentListContext['counters']);
+                continue;
+            }
+
             // Fallback: treat as paragraph
             $this->renderParagraph($pdf, $trim, false);
             $currentListContext = null;
-            $orderedActive = false;
+            $orderedMode = 'none';
             $orderedCounters = [];
         }
 
@@ -623,6 +640,48 @@ final class DDPdf1Renderer
         $counters[$level] = ($counters[$level] ?? 0) + 1;
 
         $marker = $counters[$level] . '.';
+
+        $baseIndent = ($level - 1) * self::LIST_INDENT_STEP_PT;
+        $markerX = self::MARGIN_PT + $baseIndent;
+        $textX = $markerX + self::BULLET_COL_W_PT;
+        $maxW = $pdf->GetPageWidth() - self::MARGIN_PT - $textX;
+
+        $this->ensureRoom($pdf, self::LINE_HEIGHT_PT);
+
+        // Ensure marker uses the base list font/style (avoid inheriting bold/italic from prior inline runs).
+        $pdf->SetFont('Helvetica', '', self::BODY_SIZE_PT);
+        $pdf->SetX($markerX);
+        $pdf->Cell(self::BULLET_COL_W_PT, self::LINE_HEIGHT_PT, $this->pdfText($marker), 0, 0, 'R');
+
+        $this->renderListTextLines($pdf, $text, $textX, $maxW, true);
+        $pdf->Ln(2.0);
+
+        return ['textX' => $textX, 'maxW' => $maxW, 'counters' => $counters];
+    }
+
+    /**
+     * @param array<int,int> $counters
+     * @return array{textX:float,maxW:float,counters:array<int,int>}
+     */
+    private function renderAlphaItem(FPDF $pdf, int $level, string $text, array $counters, bool $upper): array
+    {
+        // counter per level, reset deeper levels
+        for ($i = $level + 1; $i <= 9; $i++) {
+            unset($counters[$i]);
+        }
+        $counters[$level] = ($counters[$level] ?? 0) + 1;
+        $n = (int)$counters[$level];
+
+        // Convert 1->a, 26->z, 27->aa, ... (deterministic base-26)
+        $alpha = '';
+        $x = $n;
+        while ($x > 0) {
+            $x--; // 1-indexed
+            $alpha = chr(ord('a') + ($x % 26)) . $alpha;
+            $x = intdiv($x, 26);
+        }
+        if ($upper) $alpha = strtoupper($alpha);
+        $marker = $alpha . '.';
 
         $baseIndent = ($level - 1) * self::LIST_INDENT_STEP_PT;
         $markerX = self::MARGIN_PT + $baseIndent;
