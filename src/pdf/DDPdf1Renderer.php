@@ -443,12 +443,25 @@ final class DDPdf1Renderer
         // background fill (similar to code blocks) so they're visually distinct in PDF output.
         $pdf->SetX($x);
         $yLine = (float)$pdf->GetY();
-        foreach ($line as $tok) {
+        $n = count($line);
+        for ($i = 0; $i < $n; $i++) {
+            $tok = $line[$i];
             $txt = $this->pdfText((string)$tok['text']);
             $pdf->SetFont($tok['font'], $tok['style'], $fontSizePt);
             $w = (float)$pdf->GetStringWidth($txt);
             $isSpace = (bool)($tok['isSpace'] ?? false);
-            if ($tok['font'] === 'Courier' && !$isSpace && $w > 0.0) {
+            $isCourier = ($tok['font'] === 'Courier');
+            $prevCourier = ($i > 0) ? (($line[$i - 1]['font'] ?? '') === 'Courier') : false;
+            $nextCourier = ($i + 1 < $n) ? (($line[$i + 1]['font'] ?? '') === 'Courier') : false;
+            $shouldShade = $isCourier && (
+                // Shade non-space code tokens.
+                (!$isSpace)
+                // Also shade spaces that sit *between* Courier tokens so multi-word code spans
+                // look like one continuous highlight.
+                || ($isSpace && $prevCourier && $nextCourier)
+            );
+
+            if ($shouldShade && $w > 0.0) {
                 $xTok = (float)$pdf->GetX();
                 // No padding here (to avoid changing wrapping). Keep the box within line height.
                 $h = max(1.0, $lineH - 2.0);
