@@ -45,5 +45,6 @@ In other words:
 - Start with the quickstart: [Quickstart (5 minutes)](quickstart.md)
 - Read the canonical format: [DocDraw v1](docdraw-v1.md)
 - If your input is Markdown, use: [DMP-1](dmp-1.md)
+- For tooling/editors: [DD-IR-1 (JSON intermediate representation)](dd-ir-1.md)
 
 
