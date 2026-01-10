@@ -107,7 +107,7 @@ Top-level object:
 
 - `schema`: `"DD-CLI-1"`
 - `ok`: boolean
-- `command`: string (`validate`, `normalize`, `convert`, `render`)
+- `command`: string (`validate`, `normalize`, `convert`, `render`, `parse`)
 - `stage`: string (see below)
 - `input`: object (paths and/or inline mode)
 - `output`: object (paths and sha256 where applicable)
@@ -120,6 +120,7 @@ Stages (initial set):
 - `docdraw_validation`
 - `docdraw_normalization`
 - `markdown_import` (DMP‑1)
+- `docdraw_parsing` (DD-IR-1)
 - `pdf_rendering`
 
 Error object:

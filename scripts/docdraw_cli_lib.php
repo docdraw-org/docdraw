@@ -534,4 +534,360 @@ function dmp1_convert_to_docdraw(string $markdown): array
     return ['ok' => true, 'docdraw' => $docdraw];
 }
 
+/**
+ * Parse DocDraw v1 inline spans into DD-IR-1 inline nodes.
+ *
+ * Note: DocDraw v1 forbids nesting/overlap; this parser assumes input was validated.
+ *
+ * @return array<int, array<string,mixed>>
+ */
+function docdraw_ir1_parse_inlines(string $text): array
+{
+    $s = (string)$text;
+    $len = strlen($s);
+    $i = 0;
+
+    $out = [];
+
+    $isEscapable = static function (string $ch): bool {
+        return $ch === '\\' || $ch === '*' || $ch === '+' || $ch === '`';
+    };
+
+    $unescape = static function (string $t) use ($isEscapable): string {
+        $r = '';
+        $n = strlen($t);
+        for ($j = 0; $j < $n; $j++) {
+            $ch = $t[$j];
+            if ($ch === '\\' && ($j + 1) < $n) {
+                $nx = $t[$j + 1];
+                if ($isEscapable($nx)) {
+                    $r .= $nx;
+                    $j++;
+                    continue;
+                }
+            }
+            $r .= $ch;
+        }
+        return $r;
+    };
+
+    $findUnescaped = static function (string $needle, int $from) use ($s, $len): int {
+        $nLen = strlen($needle);
+        for ($j = $from; $j <= ($len - $nLen); $j++) {
+            if ($s[$j] === '\\') {
+                $j++;
+                continue;
+            }
+            if (substr($s, $j, $nLen) === $needle) return $j;
+        }
+        return -1;
+    };
+
+    while ($i < $len) {
+        // Find next opener.
+        $best = $len;
+        $tok = null;
+        foreach (['**', '++', '*', '`'] as $t) {
+            $at = $findUnescaped($t, $i);
+            if ($at >= 0 && $at < $best) {
+                $best = $at;
+                $tok = $t;
+            }
+        }
+
+        if ($tok === null || $best >= $len) {
+            $tail = $unescape(substr($s, $i));
+            if ($tail !== '') $out[] = ['type' => 'text', 'text' => $tail];
+            break;
+        }
+
+        if ($best > $i) {
+            $plain = $unescape(substr($s, $i, $best - $i));
+            if ($plain !== '') $out[] = ['type' => 'text', 'text' => $plain];
+            $i = $best;
+        }
+
+        $mLen = strlen($tok);
+        $contentStart = $i + $mLen;
+        $closeAt = $findUnescaped($tok, $contentStart);
+        if ($closeAt < 0) {
+            // Should be unreachable for validated input, but keep it safe.
+            $out[] = ['type' => 'text', 'text' => $unescape($tok)];
+            $i += $mLen;
+            continue;
+        }
+        $inner = $unescape(substr($s, $contentStart, $closeAt - $contentStart));
+        $i = $closeAt + $mLen;
+
+        if ($tok === '`') {
+            $out[] = ['type' => 'code', 'text' => $inner];
+            continue;
+        }
+        if ($tok === '**') {
+            $out[] = ['type' => 'strong', 'inlines' => [['type' => 'text', 'text' => $inner]]];
+            continue;
+        }
+        if ($tok === '*') {
+            $out[] = ['type' => 'em', 'inlines' => [['type' => 'text', 'text' => $inner]]];
+            continue;
+        }
+        if ($tok === '++') {
+            $out[] = ['type' => 'underline', 'inlines' => [['type' => 'text', 'text' => $inner]]];
+            continue;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Parse valid DocDraw v1 text into DD-IR-1 JSON shape.
+ *
+ * This is intentionally minimal: headings, paragraphs, divider, quotes, p{}/code{} blocks,
+ * and list items (bullet/number/alpha) with explicit nesting levels.
+ *
+ * @return array<string,mixed> DD-IR-1 object
+ */
+function docdraw_parse_ir1(string $text, ?string $path = null): array
+{
+    $text = str_replace(["\r\n", "\r"], "\n", $text);
+    $lines = explode("\n", $text);
+
+    $blocks = [];
+
+    $makeSrc = static function (int $start, int $end) use ($path): array {
+        $src = ['line_start' => $start, 'line_end' => $end];
+        if (is_string($path) && $path !== '') $src['path'] = $path;
+        return $src;
+    };
+
+    $curList = null; // array{style:string, items:array<int,mixed>, line_start:int}
+    $flushList = static function () use (&$curList, &$blocks, $makeSrc): void {
+        if (!$curList) return;
+        $blocks[] = [
+            'type' => 'list',
+            'style' => $curList['style'],
+            'items' => $curList['items'],
+            'src' => $makeSrc((int)$curList['line_start'], (int)$curList['line_end']),
+        ];
+        $curList = null;
+    };
+
+    $inPBlock = false;
+    $pStart = 0;
+    $pInlines = [];
+
+    $inCodeBlock = false;
+    $codeStart = 0;
+    $codeLines = [];
+
+    $lastListItemIdx = null;
+
+    foreach ($lines as $idx0 => $lineRaw) {
+        $lineNo = $idx0 + 1;
+        $line = rtrim((string)$lineRaw, " \t");
+        $trim = trim($line);
+
+        if ($inCodeBlock) {
+            if ($trim === '}') {
+                $inCodeBlock = false;
+                $blocks[] = [
+                    'type' => 'code_block',
+                    'lang' => null,
+                    'text' => implode("\n", $codeLines) . "\n",
+                    'src' => $makeSrc($codeStart, $lineNo),
+                ];
+                $codeLines = [];
+                $codeStart = 0;
+            } else {
+                $codeLines[] = $line;
+            }
+            continue;
+        }
+
+        if ($inPBlock) {
+            if ($trim === '}') {
+                $inPBlock = false;
+                $blocks[] = [
+                    'type' => 'paragraph',
+                    'inlines' => $pInlines,
+                    'src' => $makeSrc($pStart, $lineNo),
+                ];
+                $pInlines = [];
+                $pStart = 0;
+                continue;
+            }
+            if ($trim === 'br') {
+                // Explicit blank line inside p{}
+                $pInlines[] = ['type' => 'text', 'text' => "\n\n"];
+                continue;
+            }
+            // Content line. Preserve explicit line breaks.
+            if ($pInlines) $pInlines[] = ['type' => 'text', 'text' => "\n"];
+            $pInlines = array_merge($pInlines, docdraw_ir1_parse_inlines($trim));
+            continue;
+        }
+
+        if ($trim === '') {
+            $flushList();
+            $lastListItemIdx = null;
+            continue;
+        }
+
+        // Block openers
+        if ($trim === 'p{') {
+            $flushList();
+            $inPBlock = true;
+            $pStart = $lineNo;
+            $pInlines = [];
+            continue;
+        }
+        if ($trim === 'code{') {
+            $flushList();
+            $inCodeBlock = true;
+            $codeStart = $lineNo;
+            $codeLines = [];
+            continue;
+        }
+
+        // Continuations
+        if (preg_match('/^\.\.:\s+(.+)$/', $trim, $m)) {
+            if ($curList && $lastListItemIdx !== null) {
+                $curList['line_end'] = $lineNo;
+                $item = $curList['items'][$lastListItemIdx] ?? null;
+                if (is_array($item) && isset($item['blocks'][0]) && is_array($item['blocks'][0])) {
+                    $para = $item['blocks'][0];
+                    if (!isset($para['inlines']) || !is_array($para['inlines'])) $para['inlines'] = [];
+                    $para['inlines'][] = ['type' => 'text', 'text' => "\n"];
+                    $para['inlines'] = array_merge($para['inlines'], docdraw_ir1_parse_inlines(trim((string)$m[1])));
+                    $item['blocks'][0] = $para;
+                    $item['src'] = $makeSrc((int)$item['src']['line_start'], $lineNo);
+                    $curList['items'][$lastListItemIdx] = $item;
+                }
+                continue;
+            }
+            // If input is valid this should be unreachable; treat as paragraph.
+        }
+
+        // Divider
+        if ($trim === '---') {
+            $flushList();
+            $blocks[] = ['type' => 'divider', 'src' => $makeSrc($lineNo, $lineNo)];
+            continue;
+        }
+
+        // Headings
+        if (preg_match('/^#([1-6]):\s+(.+)$/', $trim, $m)) {
+            $flushList();
+            $lvl = (int)$m[1];
+            $blocks[] = [
+                'type' => 'heading',
+                'level' => $lvl,
+                'inlines' => docdraw_ir1_parse_inlines((string)$m[2]),
+                'src' => $makeSrc($lineNo, $lineNo),
+            ];
+            continue;
+        }
+
+        // Paragraph
+        if (preg_match('/^p:\s+(.+)$/', $trim, $m)) {
+            $flushList();
+            $blocks[] = [
+                'type' => 'paragraph',
+                'inlines' => docdraw_ir1_parse_inlines((string)$m[1]),
+                'src' => $makeSrc($lineNo, $lineNo),
+            ];
+            continue;
+        }
+
+        // Quote
+        if (preg_match('/^q:\s+(.+)$/', $trim, $m)) {
+            $flushList();
+            $blocks[] = [
+                'type' => 'blockquote',
+                'blocks' => [
+                    [
+                        'type' => 'paragraph',
+                        'inlines' => docdraw_ir1_parse_inlines((string)$m[1]),
+                        'src' => $makeSrc($lineNo, $lineNo),
+                    ],
+                ],
+                'src' => $makeSrc($lineNo, $lineNo),
+            ];
+            continue;
+        }
+
+        // Lists
+        $style = null;
+        $level = null;
+        $txt = null;
+        if (preg_match('/^-([1-9]\d*):\s+(.+)$/', $trim, $m)) {
+            $style = 'bullet';
+            $level = (int)$m[1];
+            $txt = (string)$m[2];
+        } elseif (preg_match('/^1-([1-9]\d*):\s+(.+)$/', $trim, $m)) {
+            $style = 'number';
+            $level = (int)$m[1];
+            $txt = (string)$m[2];
+        } elseif (preg_match('/^([aA])-([1-9]\d*):\s+(.+)$/', $trim, $m)) {
+            $style = ($m[1] === 'A') ? 'alpha_upper' : 'alpha_lower';
+            $level = (int)$m[2];
+            $txt = (string)$m[3];
+        }
+
+        if ($style !== null && $level !== null && $txt !== null) {
+            if (!$curList || $curList['style'] !== $style) {
+                $flushList();
+                $curList = [
+                    'style' => $style,
+                    'items' => [],
+                    'line_start' => $lineNo,
+                    'line_end' => $lineNo,
+                ];
+            }
+            $curList['line_end'] = $lineNo;
+            $item = [
+                'type' => 'list_item',
+                'level' => $level,
+                'blocks' => [
+                    [
+                        'type' => 'paragraph',
+                        'inlines' => docdraw_ir1_parse_inlines($txt),
+                        'src' => $makeSrc($lineNo, $lineNo),
+                    ],
+                ],
+                'src' => $makeSrc($lineNo, $lineNo),
+            ];
+            $curList['items'][] = $item;
+            $lastListItemIdx = count($curList['items']) - 1;
+            continue;
+        }
+
+        // Unknown: for valid input, unreachable. Emit as paragraph to avoid data loss in permissive mode.
+        $flushList();
+        $blocks[] = [
+            'type' => 'paragraph',
+            'inlines' => [['type' => 'text', 'text' => $trim]],
+            'src' => $makeSrc($lineNo, $lineNo),
+        ];
+    }
+
+    // Close any open list or blocks.
+    $flushList();
+    if ($inPBlock) {
+        $blocks[] = ['type' => 'paragraph', 'inlines' => $pInlines, 'src' => $makeSrc($pStart, count($lines))];
+    }
+    if ($inCodeBlock) {
+        $blocks[] = ['type' => 'code_block', 'lang' => null, 'text' => implode("\n", $codeLines) . "\n", 'src' => $makeSrc($codeStart, count($lines))];
+    }
+
+    return [
+        'schema' => 'DD-IR-1',
+        'version' => '1.0',
+        'doc' => [
+            'blocks' => $blocks,
+        ],
+    ];
+}
+
 

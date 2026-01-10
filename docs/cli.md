@@ -29,6 +29,11 @@ Machine-readable (DD-CLI-1):
 ./bin/docdraw convert --from dmp1 file.md -o out.docdraw
 ```
 
+### Parse DocDraw → DD-IR-1 (JSON IR)
+```text
+./bin/docdraw --json parse file.docdraw
+```
+
 ### Render PDF (DD-PDF-1) (prototype)
 This command requires Composer dependencies:
 

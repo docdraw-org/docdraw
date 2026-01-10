@@ -72,7 +72,7 @@ DD-IR-1 defines a small set of block kinds corresponding to DocDraw v1.
 { "type": "heading", "level": 1, "inlines": [ { "type": "text", "text": "Title" } ] }
 ```
 
-- **`level`**: integer 1–4 (matches `#1:`..`#4:`).
+- **`level`**: integer 1–6 (matches `#1:`..`#6:`).
 
 ### 4.2 Paragraph
 

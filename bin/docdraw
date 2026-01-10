@@ -125,6 +125,7 @@ Usage:
   docdraw [--format text|json] [--json] validate <file.docdraw>
   docdraw [--format text|json] [--json] normalize <file.docdraw> [-o <out.docdraw>]
   docdraw [--format text|json] [--json] convert --from dmp1 <file.md> [-o <out.docdraw>]
+  docdraw [--format text|json] [--json] parse <file.docdraw>
   docdraw [--format text|json] [--json] render <file.docdraw> -o <out.pdf>
 
 Notes:
@@ -158,6 +159,7 @@ Usage:
   docdraw [--format text|json] [--json] validate <file.docdraw>
   docdraw [--format text|json] [--json] normalize <file.docdraw> [-o <out.docdraw>]
   docdraw [--format text|json] [--json] convert --from dmp1 <file.md> [-o <out.docdraw>]
+  docdraw [--format text|json] [--json] parse <file.docdraw>
   docdraw [--format text|json] [--json] render <file.docdraw> -o <out.pdf>
 
 Notes:
@@ -343,6 +345,46 @@ if ($cmd === 'convert') {
         }
         echo $docdraw; // text mode
     }
+    exit(EXIT_OK);
+}
+
+if ($cmd === 'parse') {
+    $parsed = parse_global_flags($argv, $format);
+    $format = $parsed['format'];
+    $argv = $parsed['argv'];
+
+    $path = $argv[0] ?? null;
+    if (!is_string($path) || $path === '') usage();
+    $text = @file_get_contents($path);
+    if ($text === false) {
+        cli_fail($format, 'parse', 'docdraw_parsing', ['code' => 'DDCLI_CANNOT_READ_FILE', 'message' => "Cannot read file: {$path}"], EXIT_INTERNAL, ['path' => $path]);
+    }
+
+    // Parse requires valid structure; fail fast with the same validation codes.
+    $val = docdraw_validate_v1($text);
+    if (!$val['ok']) {
+        $err = $val['error'] ?? ['code' => 'UNKNOWN', 'message' => 'Unknown error'];
+        cli_fail($format, 'parse', 'docdraw_validation', $err, EXIT_INVALID_INPUT, ['path' => $path]);
+    }
+
+    $ir = docdraw_parse_ir1($text, $path);
+    if ($format === 'json') {
+        emit_json([
+            'schema' => DD_CLI_SCHEMA,
+            'ok' => true,
+            'command' => 'parse',
+            'stage' => 'docdraw_parsing',
+            'input' => ['path' => $path],
+            'output' => [
+                'ir' => $ir,
+                // Deterministic hash of the emitted IR JSON (useful for goldens/tooling)
+                'ir_sha256' => hash('sha256', (string)json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)),
+            ],
+            'error' => null,
+        ]);
+        exit(EXIT_OK);
+    }
+    echo "OK\n";
     exit(EXIT_OK);
 }
 
