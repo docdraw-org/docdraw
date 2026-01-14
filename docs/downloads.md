@@ -4,7 +4,7 @@
 The conformance bundle is the canonical fixture set used to verify conformance to **DocDraw v1** and related profiles (including **DD-PDF-1**).
 
 - **Bundle**: `/assets/downloads/docdraw-conformance-bundle-v1.zip`
-- **SHA256**: `711b34a5c8f31c0e325e4086a56645d14cf4e2123b60a42db075d360558f09b3`
+- **SHA256**: `809f45fb2160149f8345fc425ccc383a9850845c4461031b8ad41b7934c8bd25`
 - **SHA file**: `/assets/downloads/docdraw-conformance-bundle-v1.zip.sha256`
 
 ### What’s inside
@@ -25,7 +25,7 @@ sha256sum -c docdraw-conformance-bundle-v1.zip.sha256
 A snapshot release artifact for the **DocDraw v1.0** standard (docs + examples + goldens).
 
 - **Bundle**: `/assets/downloads/docdraw-spec-bundle-v1.0.zip`
-- **SHA256**: `eb59772cb5059a5869fcafd16b178ec31e7f5a0fe5a442f152eba1a612823123`
+- **SHA256**: `5d2ed6140c306ae936ac54ab13903eed489f92025e0abd717f2c60f008547257`
 - **SHA file**: `/assets/downloads/docdraw-spec-bundle-v1.0.zip.sha256`
 
 ### Verify integrity
