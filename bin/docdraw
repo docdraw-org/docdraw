@@ -125,7 +125,7 @@ Usage:
   docdraw [--format text|json] [--json] validate <file.docdraw>
   docdraw [--format text|json] [--json] normalize <file.docdraw> [-o <out.docdraw>]
   docdraw [--format text|json] [--json] convert --from dmp1 <file.md> [-o <out.docdraw>]
-  docdraw [--format text|json] [--json] render <file.docdraw> -o <out.pdf>
+  docdraw [--format text|json] [--json] render <file.docdraw> -o <out.pdf> [--ol-style decimal|lower-alpha-paren]
 
 Notes:
   - Default output is human-readable text.
@@ -354,12 +354,25 @@ if ($cmd === 'render') {
     $path = $argv[0] ?? null;
     if (!is_string($path) || $path === '') usage();
     $outPath = null;
+    $olStyle = 'decimal';
     for ($i = 1; $i < count($argv); $i++) {
         if ($argv[$i] === '-o' && isset($argv[$i + 1])) {
             $outPath = $argv[$i + 1];
         }
+        if ($argv[$i] === '--ol-style' && isset($argv[$i + 1])) {
+            $olStyle = (string)$argv[$i + 1];
+        }
+        if (str_starts_with((string)$argv[$i], '--ol-style=')) {
+            $olStyle = substr((string)$argv[$i], strlen('--ol-style='));
+        }
     }
     if (!$outPath) usage();
+    if ($olStyle !== 'decimal' && $olStyle !== 'lower-alpha-paren') {
+        cli_fail($format, 'render', 'pdf_rendering', [
+            'code' => 'DDCLI_INVALID_RENDER_OPTION',
+            'message' => "Invalid --ol-style value: {$olStyle}",
+        ], EXIT_INVALID_INPUT, ['path' => $path]);
+    }
 
     $autoload = __DIR__ . '/../vendor/autoload.php';
     if (!is_file($autoload)) {
@@ -384,7 +397,7 @@ if ($cmd === 'render') {
     $renderer = new \DocDraw\Pdf\DDPdf1Renderer();
     @mkdir(dirname($outPath), 0770, true);
     try {
-        $renderer->render($text, $outPath);
+        $renderer->render($text, $outPath, ['ol_style' => $olStyle]);
     } catch (Throwable $t) {
         cli_fail($format, 'render', 'pdf_rendering', ['code' => 'DDCLI_RENDER_FAILED', 'message' => 'PDF rendering failed: ' . $t->getMessage()], EXIT_RENDER_FAILED, ['path' => $path]);
     }
@@ -401,6 +414,9 @@ if ($cmd === 'render') {
                 'pdf_path' => $outPath,
                 'pdf_sha256' => $sha,
                 'renderer_profile' => 'DD-PDF-1',
+                'renderer_options' => [
+                    'ol_style' => $olStyle,
+                ],
             ],
             'error' => null,
         ]);

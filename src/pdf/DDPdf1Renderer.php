@@ -62,8 +62,17 @@ final class DDPdf1Renderer
     private const LIST_INDENT_STEP_PT = 18.0;
     private const BULLET_COL_W_PT = 18.0;
 
-    public function render(string $docdrawText, string $outPath): void
+    /**
+     * @param array{ol_style?:'decimal'|'lower-alpha-paren'} $options
+     */
+    public function render(string $docdrawText, string $outPath, array $options = []): void
     {
+        $olStyle = (string)($options['ol_style'] ?? 'decimal');
+        if ($olStyle !== 'decimal' && $olStyle !== 'lower-alpha-paren') {
+            // Deterministic fallback (validation should catch invalid values).
+            $olStyle = 'decimal';
+        }
+
         $pdf = new DeterministicFPDF('P', 'pt', 'Letter');
         $pdf->SetAutoPageBreak(true, self::MARGIN_PT);
         $pdf->SetMargins(self::MARGIN_PT, self::MARGIN_PT, self::MARGIN_PT);
@@ -201,7 +210,7 @@ final class DDPdf1Renderer
                     $orderedActive = true;
                     $orderedCounters = [];
                 }
-                $currentListContext = $this->renderOrderedItem($pdf, $lvl, $text, $orderedCounters);
+                $currentListContext = $this->renderOrderedItem($pdf, $lvl, $text, $orderedCounters, $olStyle);
                 $orderedCounters = $currentListContext['counters'];
                 unset($currentListContext['counters']);
                 continue;
@@ -587,7 +596,7 @@ final class DDPdf1Renderer
      * @param array<int,int> $counters
      * @return array{textX:float,maxW:float,counters:array<int,int>}
      */
-    private function renderOrderedItem(FPDF $pdf, int $level, string $text, array $counters): array
+    private function renderOrderedItem(FPDF $pdf, int $level, string $text, array $counters, string $olStyle): array
     {
         // counter per level, reset deeper levels
         for ($i = $level + 1; $i <= 9; $i++) {
@@ -595,7 +604,7 @@ final class DDPdf1Renderer
         }
         $counters[$level] = ($counters[$level] ?? 0) + 1;
 
-        $marker = $counters[$level] . '.';
+        $marker = $this->orderedMarker((int)$counters[$level], $olStyle);
 
         $baseIndent = ($level - 1) * self::LIST_INDENT_STEP_PT;
         $markerX = self::MARGIN_PT + $baseIndent;
@@ -613,6 +622,29 @@ final class DDPdf1Renderer
         $pdf->Ln(2.0);
 
         return ['textX' => $textX, 'maxW' => $maxW, 'counters' => $counters];
+    }
+
+    private function orderedMarker(int $n, string $olStyle): string
+    {
+        if ($olStyle === 'lower-alpha-paren') {
+            return '(' . $this->alphaLabelLower($n) . ')';
+        }
+        // default
+        return $n . '.';
+    }
+
+    // 1->a, 26->z, 27->aa, ...
+    private function alphaLabelLower(int $n1): string
+    {
+        if ($n1 <= 0) return 'a';
+        $n = $n1;
+        $out = '';
+        while ($n > 0) {
+            $n--; // 1-based
+            $out = chr(ord('a') + ($n % 26)) . $out;
+            $n = intdiv($n, 26);
+        }
+        return $out;
     }
 
     private function renderListTextLines(FPDF $pdf, string $text, float $textX, float $maxW, bool $firstLineNewRow): void

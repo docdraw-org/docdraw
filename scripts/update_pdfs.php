@@ -87,7 +87,11 @@ foreach ($manifest['examples'] as &$ex) {
     $pdfAbs = $root . '/' . ltrim($pdfRel, '/');
     @mkdir(dirname($pdfAbs), 0770, true);
 
-    $renderer->render($src, $pdfAbs);
+    $opts = [];
+    if (isset($ex['output']['renderer_options']) && is_array($ex['output']['renderer_options'])) {
+        $opts = $ex['output']['renderer_options'];
+    }
+    $renderer->render($src, $pdfAbs, $opts);
 
     $bytes = file_get_contents($pdfAbs);
     if ($bytes === false) {

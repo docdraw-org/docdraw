@@ -171,6 +171,20 @@ Marker format:
 - Level 1: `1. 2. 3.`
 - Simple v1 recommendation: always use numeric markers at every level, tracked independently per level
 
+### Ordered marker styles (DD-PDF-1 option)
+DD-PDF-1 may be parameterized with a document-wide ordered marker style for ordered lists (`1-L:`).
+
+Supported values:
+- `decimal` (default): `1. 2. 3.`
+- `lower-alpha-paren`: `(a) (b) (c)` (continues as `(z) (aa) (ab)` ...)
+
+Alpha sequence (normative for `lower-alpha-paren`):
+- \(1 \to a\)
+- \(26 \to z\)
+- \(27 \to aa\)
+- \(28 \to ab\)
+and so on (base-26 letters, like spreadsheet columns, but lower-case).
+
 Marker width handling:
 - Right-align marker text within `bulletColumnWidth` so multi-digit numbers don’t shift text.
 

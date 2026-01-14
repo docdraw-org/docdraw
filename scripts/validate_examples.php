@@ -116,6 +116,11 @@ foreach ($manifest['examples'] as $i => $ex) {
                     fwrite(STDERR, "ERROR: example {$id} (pass) must declare output.renderer_profile\n");
                     $errors++;
                 }
+                $ro = $output['renderer_options'] ?? null;
+                if ($ro !== null && !is_array($ro)) {
+                    fwrite(STDERR, "ERROR: example {$id} output.renderer_options must be an object when present\n");
+                    $errors++;
+                }
                 $normPath = $output['normalized_path'] ?? null;
                 if (!is_string($normPath) || $normPath === '') {
                     fwrite(STDERR, "ERROR: example {$id} (pass) must declare output.normalized_path\n");

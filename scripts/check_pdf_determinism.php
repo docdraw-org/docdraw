@@ -81,6 +81,11 @@ foreach ($examples as $ex) {
         fail("PASS example {$id} missing valid output.pdf_sha256 (run: make examples-update)");
     }
 
+    $opts = [];
+    if (isset($ex['output']['renderer_options']) && is_array($ex['output']['renderer_options'])) {
+        $opts = $ex['output']['renderer_options'];
+    }
+
     $tmpDir = sys_get_temp_dir();
     $tmp1 = $tmpDir . '/docdraw-ddpdf1-' . $id . '-1-' . getmypid() . '.pdf';
     $tmp2 = $tmpDir . '/docdraw-ddpdf1-' . $id . '-2-' . getmypid() . '.pdf';
@@ -89,8 +94,8 @@ foreach ($examples as $ex) {
     @unlink($tmp1);
     @unlink($tmp2);
 
-    $renderer->render($src, $tmp1);
-    $renderer->render($src, $tmp2);
+    $renderer->render($src, $tmp1, $opts);
+    $renderer->render($src, $tmp2, $opts);
 
     $bytes1 = file_get_contents($tmp1);
     $bytes2 = file_get_contents($tmp2);
